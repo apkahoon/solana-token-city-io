@@ -3,7 +3,11 @@ import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { Wallet, LogOut } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-export const WalletConnectButton = () => {
+interface Props {
+  compact?: boolean;
+}
+
+export const WalletConnectButton = ({ compact = false }: Props) => {
   const { publicKey, disconnect, connected } = useWallet();
   const { setVisible } = useWalletModal();
 
@@ -13,16 +17,19 @@ export const WalletConnectButton = () => {
 
   if (connected && publicKey) {
     return (
-      <div className="flex items-center gap-2">
-        <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 glass rounded-lg text-xs text-muted-foreground">
-          <div className="w-2 h-2 rounded-full bg-neon-green animate-pulse" />
-          {shortAddress}
-        </div>
+      <div className={`flex items-center ${compact ? 'justify-center' : 'gap-2'}`}>
+        {!compact && (
+          <div className="flex items-center gap-1.5 px-3 py-1.5 glass rounded-lg text-xs text-muted-foreground flex-1 min-w-0">
+            <div className="w-2 h-2 rounded-full bg-neon-green animate-pulse shrink-0" />
+            <span className="truncate">{shortAddress}</span>
+          </div>
+        )}
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => disconnect()}
           className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          title="Disconnect"
         >
           <LogOut className="w-4 h-4" />
         </motion.button>
@@ -35,11 +42,13 @@ export const WalletConnectButton = () => {
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
       onClick={() => setVisible(true)}
-      className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-neon-purple to-neon-blue text-primary-foreground text-sm font-semibold neon-glow transition-shadow hover:shadow-[0_0_30px_hsl(270_80%_60%/0.5)]"
+      className={`flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-neon-purple to-neon-blue text-primary-foreground font-semibold neon-glow transition-shadow hover:shadow-[0_0_30px_hsl(270_80%_60%/0.5)] ${
+        compact ? 'p-2' : 'px-4 py-2 text-sm w-full'
+      }`}
+      title="Connect Wallet"
     >
       <Wallet className="w-4 h-4" />
-      <span className="hidden sm:inline">Connect Wallet</span>
-      <span className="sm:hidden">Connect</span>
+      {!compact && <span>Connect</span>}
     </motion.button>
   );
 };

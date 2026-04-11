@@ -1,7 +1,13 @@
 import { ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
+import { Sidebar } from './Sidebar';
 import { Navbar } from './Navbar';
+import { Footer } from './Footer';
 
 export const Layout = ({ children }: { children: ReactNode }) => {
+  const location = useLocation();
+  const isLanding = location.pathname === '/';
+
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
       {/* Background effects */}
@@ -11,10 +17,20 @@ export const Layout = ({ children }: { children: ReactNode }) => {
         <div className="absolute top-[40%] right-[20%] w-[300px] h-[300px] rounded-full bg-neon-pink/3 blur-[100px] animate-pulse-slow" style={{ animationDelay: '4s' }} />
       </div>
 
-      <Navbar />
-      <main className="relative pt-16">
-        {children}
-      </main>
+      {isLanding ? (
+        <>
+          <Navbar />
+          <main className="relative pt-16">{children}</main>
+        </>
+      ) : (
+        <div className="flex">
+          <Sidebar />
+          <div className="flex-1 ml-56 flex flex-col min-h-screen transition-all duration-300">
+            <main className="relative flex-1 pt-4 pb-4">{children}</main>
+            <Footer />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
