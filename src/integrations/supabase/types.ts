@@ -287,7 +287,7 @@ export type Database = {
           display_name: string | null
           id: string
           updated_at: string
-          wallet_address: string
+          wallet_address: string | null
         }
         Insert: {
           auth_user_id?: string | null
@@ -295,7 +295,7 @@ export type Database = {
           display_name?: string | null
           id?: string
           updated_at?: string
-          wallet_address: string
+          wallet_address?: string | null
         }
         Update: {
           auth_user_id?: string | null
@@ -303,7 +303,7 @@ export type Database = {
           display_name?: string | null
           id?: string
           updated_at?: string
-          wallet_address?: string
+          wallet_address?: string | null
         }
         Relationships: []
       }
