@@ -44,10 +44,7 @@ export default function UserDashboard() {
 
   const loadData = async () => {
     setLoading(true);
-    // Load tokens by auth user or wallet
     const wallet = publicKey?.toBase58();
-    
-    const queries: Promise<any>[] = [];
     
     if (wallet) {
       const [tokensRes, txRes] = await Promise.all([
@@ -57,10 +54,6 @@ export default function UserDashboard() {
       setTokens((tokensRes.data || []) as Token[]);
       setTransactions((txRes.data || []) as Transaction[]);
     }
-    setLoading(false);
-    return;
-    setTokens((tokensRes.data || []) as Token[]);
-    setTransactions((txRes.data || []) as Transaction[]);
     setLoading(false);
   };
 
