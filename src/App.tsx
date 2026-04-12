@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SolanaWalletProvider } from "./contexts/WalletContext";
+import { AuthProvider } from "./contexts/AuthContext";
 import { Layout } from "./components/layout/Layout";
 import Landing from "./pages/Landing";
 import CreateToken from "./pages/CreateToken";
@@ -13,6 +14,9 @@ import Admin from "./pages/Admin";
 import SwapTokens from "./pages/SwapTokens";
 import LiquidityManager from "./pages/LiquidityManager";
 import SecurityBurn from "./pages/SecurityBurn";
+import Auth from "./pages/Auth";
+import UserDashboard from "./pages/UserDashboard";
+import TokenDetail from "./pages/TokenDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,24 +26,28 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <SolanaWalletProvider>
-        <BrowserRouter>
-          <Layout>
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="/create" element={<CreateToken />} />
-              <Route path="/trending" element={<Trending />} />
-              <Route path="/portfolio" element={<Portfolio />} />
-              <Route path="/dashboard" element={<Portfolio />} />
-              <Route path="/admin" element={<Admin />} />
-              <Route path="/swap" element={<SwapTokens />} />
-              <Route path="/liquidity" element={<LiquidityManager />} />
-              <Route path="/security" element={<SecurityBurn />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Layout>
-        </BrowserRouter>
-      </SolanaWalletProvider>
+      <AuthProvider>
+        <SolanaWalletProvider>
+          <BrowserRouter>
+            <Layout>
+              <Routes>
+                <Route path="/" element={<Landing />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/create" element={<CreateToken />} />
+                <Route path="/trending" element={<Trending />} />
+                <Route path="/portfolio" element={<Portfolio />} />
+                <Route path="/dashboard" element={<UserDashboard />} />
+                <Route path="/admin" element={<Admin />} />
+                <Route path="/swap" element={<SwapTokens />} />
+                <Route path="/liquidity" element={<LiquidityManager />} />
+                <Route path="/security" element={<SecurityBurn />} />
+                <Route path="/token/:id" element={<TokenDetail />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Layout>
+          </BrowserRouter>
+        </SolanaWalletProvider>
+      </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
