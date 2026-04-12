@@ -1,29 +1,18 @@
-import { useState, useEffect } from 'react';
+import { Rocket } from 'lucide-react';
 
 export const Footer = () => {
-  const [tps, setTps] = useState(3102);
-  const [gas, setGas] = useState(0.00002);
-
-  // Simulate live TPS updates
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTps(Math.floor(2800 + Math.random() * 800));
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
   return (
-    <footer className="border-t border-border/50 py-3 px-4">
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <div className="flex items-center gap-4">
-          <a href="#" className="hover:text-foreground transition-colors">Comparison</a>
-          <a href="#" className="hover:text-foreground transition-colors">Blog</a>
-          <a href="#" className="hover:text-foreground transition-colors">Privacy Policy</a>
-          <a href="#" className="hover:text-foreground transition-colors">Terms of Service</a>
+    <footer className="border-t border-border/50 px-6 py-4">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <div className="w-5 h-5 rounded-md bg-gradient-to-br from-neon-purple to-neon-pink flex items-center justify-center">
+            <Rocket className="w-3 h-3 text-primary-foreground" />
+          </div>
+          <span className="text-xs font-display font-bold gradient-text">Solana Token City</span>
         </div>
-        <div className="flex items-center gap-4">
-          <span>Gas: {gas.toFixed(5)} SOL</span>
-          <span>TPS: {tps.toLocaleString()}</span>
+        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <span>Solana Mainnet</span>
+          <span>© 2026 Solana Token City</span>
         </div>
       </div>
     </footer>

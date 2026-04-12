@@ -50,16 +50,15 @@ export default function UserDashboard() {
     const queries: Promise<any>[] = [];
     
     if (wallet) {
-      queries.push(
+      const [tokensRes, txRes] = await Promise.all([
         supabase.from('tokens').select('*').eq('creator_wallet', wallet).order('created_at', { ascending: false }),
-        supabase.from('transactions').select('*').eq('user_wallet', wallet).order('created_at', { ascending: false }).limit(20)
-      );
-    } else {
-      // No wallet connected, show empty
-      queries.push(Promise.resolve({ data: [] }), Promise.resolve({ data: [] }));
+        supabase.from('transactions').select('*').eq('user_wallet', wallet).order('created_at', { ascending: false }).limit(20),
+      ]);
+      setTokens((tokensRes.data || []) as Token[]);
+      setTransactions((txRes.data || []) as Transaction[]);
     }
-
-    const [tokensRes, txRes] = await Promise.all(queries);
+    setLoading(false);
+    return;
     setTokens((tokensRes.data || []) as Token[]);
     setTransactions((txRes.data || []) as Transaction[]);
     setLoading(false);
