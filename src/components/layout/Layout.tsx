@@ -3,10 +3,14 @@ import { useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Navbar } from './Navbar';
 import { Footer } from './Footer';
+import { ChatWidget } from '../chatbot/ChatWidget';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export const Layout = ({ children }: { children: ReactNode }) => {
   const location = useLocation();
   const isLanding = location.pathname === '/';
+  const isAuth = location.pathname === '/auth';
+  const isMobile = useIsMobile();
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
@@ -17,7 +21,7 @@ export const Layout = ({ children }: { children: ReactNode }) => {
         <div className="absolute top-[40%] right-[20%] w-[300px] h-[300px] rounded-full bg-neon-pink/3 blur-[100px] animate-pulse-slow" style={{ animationDelay: '4s' }} />
       </div>
 
-      {isLanding ? (
+      {isLanding || isAuth ? (
         <>
           <Navbar />
           <main className="relative pt-16">{children}</main>
@@ -25,12 +29,15 @@ export const Layout = ({ children }: { children: ReactNode }) => {
       ) : (
         <div className="flex">
           <Sidebar />
-          <div className="flex-1 ml-56 flex flex-col min-h-screen transition-all duration-300">
+          <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${isMobile ? 'ml-0 pt-14' : 'ml-56'}`}>
             <main className="relative flex-1 pt-4 pb-4">{children}</main>
             <Footer />
           </div>
         </div>
       )}
+
+      {/* Global Chatbot */}
+      <ChatWidget />
     </div>
   );
 };
