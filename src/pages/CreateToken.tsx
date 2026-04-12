@@ -1,14 +1,17 @@
 import { useState, useCallback } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
+import { useConnection } from '@solana/wallet-adapter-react';
+import { SystemProgram, Transaction, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { motion } from 'framer-motion';
 import { Rocket, Upload, Coins, ArrowRight, Loader2, CheckCircle2, AlertCircle, Globe, Twitter, Send } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 type Step = 'form' | 'config' | 'payment' | 'creating' | 'success';
 
 export default function CreateToken() {
-  const { publicKey, connected } = useWallet();
+  const { publicKey, connected, sendTransaction } = useWallet();
+  const { connection } = useConnection();
   const { setVisible } = useWalletModal();
   const [step, setStep] = useState<Step>('form');
   const [form, setForm] = useState({
@@ -48,43 +51,71 @@ export default function CreateToken() {
   };
 
   const handlePayment = async () => {
-    if (!publicKey) return;
-    setStep('creating');
+    if (!publicKey || !sendTransaction) return;
+    
+    const PLATFORM_WALLET = 'QLcWFBchUq7tzK91MqZBexQL7hVohATAgdsoGAGu5Ra';
+    const FEE_SOL = 0.3;
 
-    // Save token to DB
-    const { data: token, error } = await supabase.from('tokens').insert({
-      name: form.name,
-      symbol: form.symbol,
-      supply: Number(form.supply),
-      decimals: Number(form.decimals),
-      description: form.description,
-      creator_wallet: publicKey.toBase58(),
-      website: form.website || null,
-      twitter: form.twitter || null,
-      telegram: form.telegram || null,
-    }).select().single();
+    try {
+      setStep('creating');
 
-    if (token) {
-      // Record transaction
-      await supabase.from('transactions').insert({
-        user_wallet: publicKey.toBase58(),
-        type: 'CREATE_TOKEN' as const,
-        amount: 0.3,
-        status: 'confirmed',
-        token_id: token.id,
+      // Create the SOL transfer transaction
+      const transaction = new Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: publicKey,
+          toPubkey: new PublicKey(PLATFORM_WALLET),
+          lamports: Math.floor(FEE_SOL * LAMPORTS_PER_SOL),
+        })
+      );
+
+      // Send transaction via Phantom
+      const signature = await sendTransaction(transaction, connection);
+      
+      // Wait for confirmation
+      const latestBlockhash = await connection.getLatestBlockhash();
+      await connection.confirmTransaction({
+        signature,
+        ...latestBlockhash,
       });
 
-      // Upsert user
-      await supabase.from('users').upsert({
-        wallet_address: publicKey.toBase58(),
-      }, { onConflict: 'wallet_address' });
+      // Verify payment on backend and create token record
+      const verifyUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verify-payment`;
+      const verifyRes = await fetch(verifyUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          tx_hash: signature,
+          token_data: {
+            name: form.name,
+            symbol: form.symbol,
+            supply: Number(form.supply),
+            decimals: Number(form.decimals),
+            description: form.description,
+            creator_wallet: publicKey.toBase58(),
+            website: form.website || null,
+            twitter: form.twitter || null,
+            telegram: form.telegram || null,
+          },
+        }),
+      });
 
-      setCreatedToken(token);
+      const result = await verifyRes.json();
+      
+      if (!verifyRes.ok) {
+        throw new Error(result.error || 'Payment verification failed');
+      }
+
+      setCreatedToken(result.token);
+      setStep('success');
+      toast.success('Token launched successfully! 🚀');
+    } catch (err: any) {
+      console.error('Payment error:', err);
+      toast.error(err.message || 'Payment failed. Please try again.');
+      setStep('payment');
     }
-
-    // Simulate blockchain interaction time
-    await new Promise((r) => setTimeout(r, 2000));
-    setStep('success');
   };
 
   const steps = [
