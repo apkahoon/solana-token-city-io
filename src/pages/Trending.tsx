@@ -57,7 +57,7 @@ export default function Trending() {
     }
 
     const { data } = await query.limit(20);
-    setTokens((data as TokenWithStats[] | null) || []);
+    setTokens((data as unknown as TokenWithStats[] | null) || []);
     setLoading(false);
   };
 
