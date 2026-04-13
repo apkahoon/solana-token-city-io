@@ -17,7 +17,7 @@ interface TokenWithStats {
     price_change_24h: number;
     volume_24h: number;
     score: number;
-  }[];
+  } | null;
 }
 
 const tabs: { key: Tab; label: string; icon: typeof TrendingUp }[] = [
