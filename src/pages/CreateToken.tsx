@@ -3,16 +3,31 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { useConnection } from '@solana/wallet-adapter-react';
 import { SystemProgram, Transaction, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Rocket, Upload, Coins, ArrowRight, Loader2, CheckCircle2, AlertCircle, Globe, Twitter, Send } from 'lucide-react';
+import { Rocket, Upload, Coins, ArrowRight, Loader2, AlertCircle, Globe, Twitter, Send, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
+import { sanitizeText, sanitizeUrl, sanitizeHandle, FIELD_LIMITS } from '@/lib/sanitize';
+import { ConfirmationModal } from '@/components/token/ConfirmationModal';
 
-type Step = 'form' | 'config' | 'payment' | 'creating' | 'success';
+const PLATFORM_WALLET = 'QLcWFBchUq7tzK91MqZBexQL7hVohATAgdsoGAGu5Ra';
+const FEE_SOL = 0.3;
+
+type Step = 'form' | 'config' | 'payment' | 'creating' | 'success' | 'error';
+
+interface CreatedToken {
+  id: string;
+  name: string;
+  symbol: string;
+  supply: number;
+  mint_address?: string;
+}
 
 export default function CreateToken() {
   const { publicKey, connected, sendTransaction } = useWallet();
   const { connection } = useConnection();
   const { setVisible } = useWalletModal();
+  const navigate = useNavigate();
   const [step, setStep] = useState<Step>('form');
   const [form, setForm] = useState({
     name: '',
@@ -26,11 +41,18 @@ export default function CreateToken() {
   });
   const [logo, setLogo] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
-  const [createdToken, setCreatedToken] = useState<any>(null);
+  const [createdToken, setCreatedToken] = useState<CreatedToken | null>(null);
+  const [txSignature, setTxSignature] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const handleLogoChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error('Image must be under 10MB');
+        return;
+      }
       setLogo(file);
       setLogoPreview(URL.createObjectURL(file));
     }
@@ -38,10 +60,7 @@ export default function CreateToken() {
 
   const handleBasicSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!connected) {
-      setVisible(true);
-      return;
-    }
+    if (!connected) { setVisible(true); return; }
     setStep('config');
   };
 
@@ -50,14 +69,40 @@ export default function CreateToken() {
     setStep('payment');
   };
 
+  const handlePaymentClick = () => {
+    setShowConfirmModal(true);
+  };
+
   const handlePayment = async () => {
+    setShowConfirmModal(false);
     if (!publicKey || !sendTransaction) return;
-    
-    const PLATFORM_WALLET = 'QLcWFBchUq7tzK91MqZBexQL7hVohATAgdsoGAGu5Ra';
-    const FEE_SOL = 0.3;
 
     try {
       setStep('creating');
+      setErrorMessage('');
+
+      // Upload logo to IPFS if provided
+      let logoUrl: string | null = null;
+      if (logo) {
+        try {
+          const ipfsForm = new FormData();
+          ipfsForm.append('file', logo);
+          const ipfsRes = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-to-ipfs`,
+            {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+              body: ipfsForm,
+            }
+          );
+          if (ipfsRes.ok) {
+            const ipfsData = await ipfsRes.json();
+            logoUrl = ipfsData.ipfsUrl;
+          }
+        } catch (e) {
+          console.warn('IPFS upload failed, continuing without logo:', e);
+        }
+      }
 
       // Create the SOL transfer transaction
       const transaction = new Transaction().add(
@@ -68,17 +113,28 @@ export default function CreateToken() {
         })
       );
 
-      // Send transaction via Phantom
       const signature = await sendTransaction(transaction, connection);
-      
+      setTxSignature(signature);
+
       // Wait for confirmation
       const latestBlockhash = await connection.getLatestBlockhash();
-      await connection.confirmTransaction({
-        signature,
-        ...latestBlockhash,
-      });
+      await connection.confirmTransaction({ signature, ...latestBlockhash });
 
-      // Verify payment on backend and create token record
+      // Sanitize all inputs before sending
+      const sanitizedData = {
+        name: sanitizeText(form.name).slice(0, FIELD_LIMITS.name),
+        symbol: sanitizeText(form.symbol).slice(0, FIELD_LIMITS.symbol).toUpperCase(),
+        supply: Number(form.supply),
+        decimals: Number(form.decimals),
+        description: sanitizeText(form.description).slice(0, FIELD_LIMITS.description),
+        creator_wallet: publicKey.toBase58(),
+        website: sanitizeUrl(form.website) || null,
+        twitter: sanitizeHandle(form.twitter) || null,
+        telegram: sanitizeHandle(form.telegram) || null,
+        logo_url: logoUrl,
+      };
+
+      // Verify payment on backend
       const verifyUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verify-payment`;
       const verifyRes = await fetch(verifyUrl, {
         method: 'POST',
@@ -86,36 +142,45 @@ export default function CreateToken() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({
-          tx_hash: signature,
-          token_data: {
-            name: form.name,
-            symbol: form.symbol,
-            supply: Number(form.supply),
-            decimals: Number(form.decimals),
-            description: form.description,
-            creator_wallet: publicKey.toBase58(),
-            website: form.website || null,
-            twitter: form.twitter || null,
-            telegram: form.telegram || null,
-          },
-        }),
+        body: JSON.stringify({ tx_hash: signature, token_data: sanitizedData }),
       });
 
       const result = await verifyRes.json();
-      
-      if (!verifyRes.ok) {
-        throw new Error(result.error || 'Payment verification failed');
-      }
+      if (!verifyRes.ok) throw new Error(result.error || 'Payment verification failed');
 
       setCreatedToken(result.token);
       setStep('success');
+
+      // Console log for verification
+      console.log('✅ Token created successfully!');
+      console.log('TX Signature:', signature);
+      console.log('Fee Paid:', FEE_SOL, 'SOL');
+      console.log('Recipient Wallet:', PLATFORM_WALLET);
+      console.log('Token ID:', result.token.id);
+
       toast.success('Token launched successfully! 🚀');
     } catch (err: any) {
       console.error('Payment error:', err);
-      toast.error(err.message || 'Payment failed. Please try again.');
-      setStep('payment');
+      let msg = 'Payment failed. Please try again.';
+      if (err.message?.includes('User rejected')) msg = 'Transaction cancelled by user. No SOL was spent.';
+      else if (err.message?.includes('insufficient')) msg = 'Insufficient SOL balance. You need at least 0.3 SOL.';
+      else if (err.message?.includes('timeout') || err.message?.includes('Timeout')) msg = 'Transaction timed out. Please check your wallet and try again.';
+      else if (err.message) msg = err.message;
+
+      setErrorMessage(msg);
+      setStep('error');
+      toast.error(msg);
     }
+  };
+
+  const handleRetry = () => {
+    setErrorMessage('');
+    setStep('payment');
+  };
+
+  const shareOnTwitter = () => {
+    const text = `I just launched $${createdToken?.symbol} on @SolanaTokenCity! 🚀\n\nCheck it out: ${window.location.origin}/token/${createdToken?.id}`;
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
   };
 
   const steps = [
@@ -123,65 +188,60 @@ export default function CreateToken() {
     { label: 'Configuration', num: 2 },
     { label: 'Payment', num: 3 },
   ];
-  const stepIndex = ['form', 'config', 'payment', 'creating'].indexOf(step === 'success' ? 'creating' : step);
+  const stepIndex = ['form', 'config', 'payment', 'creating', 'error'].indexOf(
+    step === 'success' ? 'creating' : step
+  );
 
   return (
     <div className="min-h-screen py-8 px-4">
       <div className="max-w-5xl mx-auto">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <h1 className="font-display text-3xl font-bold mb-2">Solana Token Creator</h1>
+          <h1 className="font-display text-2xl sm:text-3xl font-bold mb-2">Solana Token Creator</h1>
           <p className="text-muted-foreground text-sm">Mint fully compliant SPL tokens on Solana with zero coding.</p>
         </motion.div>
 
         {/* Progress steps */}
-        <div className="flex items-center gap-2 mb-8">
+        <div className="flex items-center gap-2 mb-8 flex-wrap">
           {steps.map((s, i) => {
             const isActive = i <= stepIndex || step === 'success';
             return (
               <div key={s.label} className="flex items-center gap-2">
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-colors ${
-                  isActive ? 'bg-gradient-to-br from-neon-purple to-neon-blue text-primary-foreground' : 'bg-muted text-muted-foreground'
-                }`}>
-                  {s.num}
-                </div>
+                  isActive ? 'bg-gradient-to-br from-primary to-secondary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                }`}>{s.num}</div>
                 <span className={`text-sm font-medium ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>{s.label}</span>
-                {i < steps.length - 1 && <ArrowRight className={`w-4 h-4 ${isActive ? 'text-neon-purple' : 'text-border'}`} />}
+                {i < steps.length - 1 && <ArrowRight className={`w-4 h-4 ${isActive ? 'text-primary' : 'text-border'}`} />}
               </div>
             );
           })}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
-          {/* Main form area */}
           <div>
             {step === 'form' && (
               <motion.form initial={{ opacity: 0 }} animate={{ opacity: 1 }} onSubmit={handleBasicSubmit} className="space-y-6">
-                {/* Token Identity */}
-                <div className="glass p-6">
+                <div className="glass p-4 sm:p-6">
                   <h2 className="font-display font-semibold text-lg mb-1">Token Identity</h2>
                   <p className="text-xs text-muted-foreground mb-5">Basic information visible on-chain.</p>
-
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                     <div>
-                      <label className="text-xs font-medium text-muted-foreground mb-1.5 block uppercase tracking-wider">Token Name</label>
-                      <input type="text" required maxLength={32} placeholder="e.g. Solana Gem" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-4 py-2.5 rounded-lg bg-muted border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm" />
+                      <label className="text-xs font-medium text-muted-foreground mb-1.5 block uppercase tracking-wider">Token Name ({form.name.length}/{FIELD_LIMITS.name})</label>
+                      <input type="text" required maxLength={FIELD_LIMITS.name} placeholder="e.g. Solana Gem" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-4 py-2.5 rounded-lg bg-muted border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm" />
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-muted-foreground mb-1.5 block uppercase tracking-wider">Symbol</label>
-                      <input type="text" required maxLength={10} placeholder="e.g. GEM" value={form.symbol} onChange={(e) => setForm({ ...form, symbol: e.target.value.toUpperCase() })} className="w-full px-4 py-2.5 rounded-lg bg-muted border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm" />
+                      <label className="text-xs font-medium text-muted-foreground mb-1.5 block uppercase tracking-wider">Symbol ({form.symbol.length}/{FIELD_LIMITS.symbol})</label>
+                      <input type="text" required maxLength={FIELD_LIMITS.symbol} placeholder="e.g. GEM" value={form.symbol} onChange={(e) => setForm({ ...form, symbol: e.target.value.toUpperCase() })} className="w-full px-4 py-2.5 rounded-lg bg-muted border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm" />
                     </div>
                   </div>
-
-                  {/* Logo upload */}
                   <div className="mb-4">
-                    <label className="text-xs font-medium text-muted-foreground mb-1.5 block uppercase tracking-wider">Token Image</label>
+                    <label className="text-xs font-medium text-muted-foreground mb-1.5 block uppercase tracking-wider">Token Image (max 10MB)</label>
                     <label className="cursor-pointer block">
-                      <div className="w-full h-40 rounded-lg bg-muted border-2 border-dashed border-border flex flex-col items-center justify-center hover:border-neon-purple/50 transition-colors">
+                      <div className="w-full h-40 rounded-lg bg-muted border-2 border-dashed border-border flex flex-col items-center justify-center hover:border-primary/50 transition-colors">
                         {logoPreview ? (
                           <img src={logoPreview} alt="Token logo" className="h-full object-contain rounded-lg" />
                         ) : (
                           <>
-                            <Upload className="w-8 h-8 text-neon-blue mb-2" />
+                            <Upload className="w-8 h-8 text-secondary mb-2" />
                             <span className="text-sm text-muted-foreground">Click to upload image</span>
                           </>
                         )}
@@ -189,44 +249,41 @@ export default function CreateToken() {
                       <input type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
                     </label>
                   </div>
-
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground mb-1.5 block uppercase tracking-wider">Description</label>
-                    <textarea rows={3} maxLength={500} placeholder="Project description..." value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="w-full px-4 py-2.5 rounded-lg bg-muted border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm resize-none" />
+                    <label className="text-xs font-medium text-muted-foreground mb-1.5 block uppercase tracking-wider">Description ({form.description.length}/{FIELD_LIMITS.description})</label>
+                    <textarea rows={3} maxLength={FIELD_LIMITS.description} placeholder="Project description..." value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="w-full px-4 py-2.5 rounded-lg bg-muted border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm resize-none" />
                   </div>
                 </div>
 
-                {/* Metadata Extensions */}
-                <div className="glass p-6">
+                <div className="glass p-4 sm:p-6">
                   <h2 className="font-display font-semibold text-lg mb-1">Metadata Extensions</h2>
                   <p className="text-xs text-muted-foreground mb-5">Social links for DexScreener.</p>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="relative">
                       <Globe className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                      <input type="url" placeholder="Website" value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-muted border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm" />
+                      <input type="url" placeholder="Website" maxLength={FIELD_LIMITS.website} value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })} className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-muted border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm" />
                     </div>
                     <div className="relative">
                       <Twitter className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                      <input type="text" placeholder="Twitter / X" value={form.twitter} onChange={(e) => setForm({ ...form, twitter: e.target.value })} className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-muted border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm" />
+                      <input type="text" placeholder="Twitter / X" maxLength={FIELD_LIMITS.twitter} value={form.twitter} onChange={(e) => setForm({ ...form, twitter: e.target.value })} className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-muted border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm" />
                     </div>
                     <div className="relative">
                       <Send className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                      <input type="text" placeholder="Telegram" value={form.telegram} onChange={(e) => setForm({ ...form, telegram: e.target.value })} className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-muted border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm" />
+                      <input type="text" placeholder="Telegram" maxLength={FIELD_LIMITS.telegram} value={form.telegram} onChange={(e) => setForm({ ...form, telegram: e.target.value })} className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-muted border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm" />
                     </div>
                   </div>
                 </div>
 
-                <button type="submit" className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-neon-purple to-neon-blue text-primary-foreground font-semibold neon-glow">
+                <button type="submit" className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-secondary text-primary-foreground font-semibold">
                   {connected ? <>Next <ArrowRight className="w-4 h-4" /></> : <>Connect Wallet to Continue</>}
                 </button>
               </motion.form>
             )}
 
             {step === 'config' && (
-              <motion.form initial={{ opacity: 0 }} animate={{ opacity: 1 }} onSubmit={handleConfigSubmit} className="glass p-6 space-y-5">
+              <motion.form initial={{ opacity: 0 }} animate={{ opacity: 1 }} onSubmit={handleConfigSubmit} className="glass p-4 sm:p-6 space-y-5">
                 <h2 className="font-display font-semibold text-lg mb-1">Configuration</h2>
                 <p className="text-xs text-muted-foreground mb-4">Set your token parameters.</p>
-
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-medium text-muted-foreground mb-1.5 block uppercase tracking-wider">Total Supply</label>
@@ -237,18 +294,16 @@ export default function CreateToken() {
                     <input type="number" required min={0} max={18} value={form.decimals} onChange={(e) => setForm({ ...form, decimals: e.target.value })} className="w-full px-4 py-2.5 rounded-lg bg-muted border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm" />
                   </div>
                 </div>
-
                 <div className="glass p-4 flex items-center gap-3">
-                  <Coins className="w-5 h-5 text-neon-purple shrink-0" />
+                  <Coins className="w-5 h-5 text-primary shrink-0" />
                   <div>
-                    <div className="text-sm font-medium">Launch Fee: 0.3 SOL</div>
+                    <div className="text-sm font-medium">Launch Fee: {FEE_SOL} SOL</div>
                     <div className="text-xs text-muted-foreground">Includes token creation + metadata upload</div>
                   </div>
                 </div>
-
                 <div className="flex gap-3">
                   <button type="button" onClick={() => setStep('form')} className="flex-1 px-6 py-3 rounded-xl glass font-medium text-sm hover:bg-muted/80">Back</button>
-                  <button type="submit" className="flex-1 px-6 py-3 rounded-xl bg-gradient-to-r from-neon-purple to-neon-blue text-primary-foreground font-semibold neon-glow">
+                  <button type="submit" className="flex-1 px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-secondary text-primary-foreground font-semibold">
                     Continue to Payment <ArrowRight className="w-4 h-4 inline ml-1" />
                   </button>
                 </div>
@@ -256,23 +311,23 @@ export default function CreateToken() {
             )}
 
             {step === 'payment' && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass p-6 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-neon-purple/20 to-neon-blue/20 flex items-center justify-center mx-auto mb-6">
-                  <Coins className="w-8 h-8 text-neon-purple" />
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass p-4 sm:p-6 text-center">
+                <div className="w-16 h-16 rounded-2xl bg-primary/20 flex items-center justify-center mx-auto mb-6">
+                  <Coins className="w-8 h-8 text-primary" />
                 </div>
                 <h2 className="font-display text-xl font-bold mb-2">Confirm Payment</h2>
                 <p className="text-muted-foreground text-sm mb-6">
-                  Send <span className="text-foreground font-semibold">0.3 SOL</span> to create your token
+                  Send <span className="text-foreground font-semibold">{FEE_SOL} SOL</span> to create your token
                 </p>
                 <div className="glass p-4 mb-6 text-left space-y-2 text-sm">
                   <div className="flex justify-between"><span className="text-muted-foreground">Token:</span> <span>{form.name} ({form.symbol})</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">Supply:</span> <span>{Number(form.supply).toLocaleString()}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Fee:</span> <span className="text-neon-purple font-semibold">0.3 SOL</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Receiver:</span> <span className="font-mono text-xs">QLcW...u5Ra</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Fee:</span> <span className="text-primary font-semibold">{FEE_SOL} SOL</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Receiver:</span> <span className="font-mono text-xs">{PLATFORM_WALLET.slice(0, 6)}...{PLATFORM_WALLET.slice(-4)}</span></div>
                 </div>
                 <div className="flex gap-3">
                   <button onClick={() => setStep('config')} className="flex-1 px-4 py-3 rounded-xl glass text-sm font-medium hover:bg-muted/80">Back</button>
-                  <button onClick={handlePayment} className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-neon-pink to-neon-purple text-primary-foreground font-semibold neon-glow">
+                  <button onClick={handlePaymentClick} className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-accent to-primary text-primary-foreground font-semibold">
                     <Rocket className="w-5 h-5" /> Pay & Launch
                   </button>
                 </div>
@@ -281,11 +336,11 @@ export default function CreateToken() {
 
             {step === 'creating' && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass p-6 text-center">
-                <Loader2 className="w-12 h-12 text-neon-purple mx-auto mb-6 animate-spin" />
+                <Loader2 className="w-12 h-12 text-primary mx-auto mb-6 animate-spin" />
                 <h2 className="font-display text-xl font-bold mb-2">Creating Your Token...</h2>
                 <p className="text-muted-foreground text-sm">Verifying payment & deploying on Solana</p>
                 <div className="mt-6 space-y-2 text-left text-sm">
-                  {['Verifying SOL payment...', 'Creating SPL token...', 'Uploading metadata...'].map((s, i) => (
+                  {['Verifying SOL payment...', 'Uploading metadata to IPFS...', 'Creating SPL token record...'].map((s, i) => (
                     <div key={i} className="flex items-center gap-2 text-muted-foreground">
                       <Loader2 className="w-3 h-3 animate-spin" /> {s}
                     </div>
@@ -294,23 +349,66 @@ export default function CreateToken() {
               </motion.div>
             )}
 
-            {step === 'success' && (
+            {step === 'error' && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass p-6 text-center">
+                <AlertCircle className="w-16 h-16 text-destructive mx-auto mb-6" />
+                <h2 className="font-display text-xl font-bold mb-2">Transaction Failed</h2>
+                <p className="text-muted-foreground text-sm mb-4">{errorMessage}</p>
+                {txSignature && (
+                  <p className="text-xs text-muted-foreground mb-4">
+                    TX: <a href={`https://solscan.io/tx/${txSignature}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-mono">{txSignature.slice(0, 16)}...</a>
+                  </p>
+                )}
+                <div className="flex gap-3">
+                  <button onClick={() => setStep('form')} className="flex-1 px-4 py-3 rounded-xl glass text-sm font-medium hover:bg-muted/80">Start Over</button>
+                  <button onClick={handleRetry} className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-secondary text-primary-foreground font-semibold">
+                    <RotateCcw className="w-4 h-4" /> Retry Payment
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {step === 'success' && createdToken && (
               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="glass p-6 text-center">
-                <CheckCircle2 className="w-16 h-16 text-neon-green mx-auto mb-6" />
+                <div className="w-16 h-16 rounded-full bg-neon-green/20 flex items-center justify-center mx-auto mb-6">
+                  <Rocket className="w-8 h-8 text-neon-green" />
+                </div>
                 <h2 className="font-display text-2xl font-bold mb-2">Token Launched! 🚀</h2>
                 <p className="text-muted-foreground text-sm mb-6">
-                  <span className="text-foreground font-semibold">{form.name}</span> is now live on Solana
+                  <span className="text-foreground font-semibold">{createdToken.name}</span> ({createdToken.symbol}) is now live on Solana
                 </p>
+
                 <div className="glass p-4 mb-6 text-left space-y-2 text-sm">
-                  <div className="flex justify-between"><span className="text-muted-foreground">Token:</span> <span>{form.name} ({form.symbol})</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Supply:</span> <span>{Number(form.supply).toLocaleString()}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Token:</span> <span>{createdToken.name} ({createdToken.symbol})</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Supply:</span> <span>{Number(createdToken.supply).toLocaleString()}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Fee Paid:</span> <span className="text-neon-green font-semibold">{FEE_SOL} SOL ✓</span></div>
+                  <div className="flex justify-between items-center"><span className="text-muted-foreground">Recipient:</span> <span className="font-mono text-xs">{PLATFORM_WALLET.slice(0, 6)}...{PLATFORM_WALLET.slice(-4)}</span></div>
+                  {txSignature && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">TX:</span>
+                      <a href={`https://solscan.io/tx/${txSignature}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-mono text-xs">{txSignature.slice(0, 20)}...</a>
+                    </div>
+                  )}
+                  {createdToken.mint_address && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Mint:</span>
+                      <button onClick={() => { navigator.clipboard.writeText(createdToken.mint_address!); toast.success('Copied!'); }} className="text-primary hover:underline font-mono text-xs">{createdToken.mint_address.slice(0, 20)}... 📋</button>
+                    </div>
+                  )}
                 </div>
+
                 <div className="flex flex-col sm:flex-row gap-3">
-                  <button onClick={() => { setStep('form'); setForm({ name: '', symbol: '', supply: '1000000000', decimals: '9', description: '', website: '', twitter: '', telegram: '' }); setLogo(null); setLogoPreview(null); }} className="flex-1 px-4 py-2.5 rounded-xl glass text-sm font-medium hover:bg-muted/80">
-                    Create Another
+                  <button onClick={shareOnTwitter} className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl glass text-sm font-medium hover:bg-muted/80">
+                    <Twitter className="w-4 h-4" /> Share on Twitter
                   </button>
-                  <button onClick={() => window.location.href = '/liquidity'} className="flex-1 px-4 py-2.5 rounded-xl bg-gradient-to-r from-neon-purple to-neon-blue text-primary-foreground text-sm font-semibold neon-glow">
-                    Add Liquidity
+                  <button onClick={() => navigate(`/token/${createdToken.id}`)} className="flex-1 px-4 py-2.5 rounded-xl bg-gradient-to-r from-primary to-secondary text-primary-foreground text-sm font-semibold">
+                    View Token Page
+                  </button>
+                </div>
+
+                <div className="mt-4">
+                  <button onClick={() => { setStep('form'); setForm({ name: '', symbol: '', supply: '1000000000', decimals: '9', description: '', website: '', twitter: '', telegram: '' }); setLogo(null); setLogoPreview(null); setTxSignature(null); setCreatedToken(null); }} className="text-xs text-muted-foreground hover:text-foreground">
+                    Create Another Token →
                   </button>
                 </div>
               </motion.div>
@@ -321,22 +419,15 @@ export default function CreateToken() {
           <div className="hidden lg:block">
             <div className="sticky top-8">
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="glass p-6 text-center">
-                {/* Token icon preview */}
-                <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-neon-purple/20 to-neon-blue/20 border-2 border-dashed border-border flex items-center justify-center mb-4 overflow-hidden">
+                <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 border-2 border-dashed border-border flex items-center justify-center mb-4 overflow-hidden">
                   {logoPreview ? (
                     <img src={logoPreview} alt="Preview" className="w-full h-full object-cover rounded-full" />
                   ) : (
                     <Upload className="w-6 h-6 text-muted-foreground" />
                   )}
                 </div>
-
-                <h3 className="font-display text-lg font-bold mb-1">
-                  {form.name || 'Token Name'}
-                </h3>
-                <div className="inline-flex px-3 py-0.5 rounded-full bg-muted text-xs font-medium text-muted-foreground mb-6">
-                  {form.symbol || 'SYMBOL'}
-                </div>
-
+                <h3 className="font-display text-lg font-bold mb-1">{form.name || 'Token Name'}</h3>
+                <div className="inline-flex px-3 py-0.5 rounded-full bg-muted text-xs font-medium text-muted-foreground mb-6">{form.symbol || 'SYMBOL'}</div>
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Supply</span>
@@ -355,17 +446,26 @@ export default function CreateToken() {
                 </div>
               </motion.div>
 
-              {/* Info */}
               <div className="mt-4 glass p-4 flex items-start gap-3">
-                <AlertCircle className="w-4 h-4 text-neon-purple shrink-0 mt-0.5" />
+                <AlertCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                 <div className="text-xs text-muted-foreground">
-                  <strong className="text-foreground">How it works:</strong> Fill in details → Pay 0.3 SOL → Token is created and minted to your wallet.
+                  <strong className="text-foreground">How it works:</strong> Fill in details → Pay {FEE_SOL} SOL → Token is created and minted to your wallet.
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      <ConfirmationModal
+        open={showConfirmModal}
+        onConfirm={handlePayment}
+        onCancel={() => setShowConfirmModal(false)}
+        tokenName={form.name}
+        tokenSymbol={form.symbol}
+        feeSol={FEE_SOL}
+        recipientWallet={PLATFORM_WALLET}
+      />
     </div>
   );
 }
