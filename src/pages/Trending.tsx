@@ -115,7 +115,7 @@ export default function Trending() {
             </div>
 
             {tokens.map((token, i) => {
-              const stats = token.trending_stats?.[0];
+              const stats = Array.isArray(token.trending_stats) ? token.trending_stats[0] : token.trending_stats;
               const change = stats?.price_change_24h || 0;
               return (
                 <Link
