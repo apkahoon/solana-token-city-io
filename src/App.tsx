@@ -17,6 +17,8 @@ import SecurityBurn from "./pages/SecurityBurn";
 import Auth from "./pages/Auth";
 import UserDashboard from "./pages/UserDashboard";
 import TokenDetail from "./pages/TokenDetail";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +44,8 @@ const App = () => (
                 <Route path="/liquidity" element={<LiquidityManager />} />
                 <Route path="/security" element={<SecurityBurn />} />
                 <Route path="/token/:id" element={<TokenDetail />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/privacy" element={<Privacy />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Layout>

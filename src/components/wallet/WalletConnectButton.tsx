@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { Wallet, LogOut } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
 interface Props {
@@ -10,6 +12,7 @@ interface Props {
 export const WalletConnectButton = ({ compact = false }: Props) => {
   const { publicKey, disconnect, connected } = useWallet();
   const { setVisible } = useWalletModal();
+  const [tosAccepted, setTosAccepted] = useState(false);
 
   const shortAddress = publicKey
     ? `${publicKey.toBase58().slice(0, 4)}...${publicKey.toBase58().slice(-4)}`
@@ -38,17 +41,38 @@ export const WalletConnectButton = ({ compact = false }: Props) => {
   }
 
   return (
-    <motion.button
-      whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.95 }}
-      onClick={() => setVisible(true)}
-      className={`flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-neon-purple to-neon-blue text-primary-foreground font-semibold neon-glow transition-shadow hover:shadow-[0_0_30px_hsl(270_80%_60%/0.5)] ${
-        compact ? 'p-2' : 'px-4 py-2 text-sm w-full'
-      }`}
-      title="Connect Wallet"
-    >
-      <Wallet className="w-4 h-4" />
-      {!compact && <span>Connect</span>}
-    </motion.button>
+    <div className="space-y-2">
+      {!compact && (
+        <label className="flex items-start gap-2 cursor-pointer text-xs text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={tosAccepted}
+            onChange={(e) => setTosAccepted(e.target.checked)}
+            className="mt-0.5 rounded border-border"
+          />
+          <span>
+            I agree to the{' '}
+            <Link to="/terms" className="text-primary hover:underline">Terms of Service</Link>
+            {' '}and{' '}
+            <Link to="/privacy" className="text-primary hover:underline">Privacy Policy</Link>
+          </span>
+        </label>
+      )}
+      <motion.button
+        whileHover={{ scale: tosAccepted || compact ? 1.05 : 1 }}
+        whileTap={{ scale: tosAccepted || compact ? 0.95 : 1 }}
+        onClick={() => {
+          if (compact || tosAccepted) setVisible(true);
+        }}
+        disabled={!compact && !tosAccepted}
+        className={`flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-primary to-secondary text-primary-foreground font-semibold transition-all ${
+          compact ? 'p-2' : 'px-4 py-2 text-sm w-full'
+        } ${!compact && !tosAccepted ? 'opacity-50 cursor-not-allowed' : ''}`}
+        title="Connect Wallet"
+      >
+        <Wallet className="w-4 h-4" />
+        {!compact && <span>Connect</span>}
+      </motion.button>
+    </div>
   );
 };
