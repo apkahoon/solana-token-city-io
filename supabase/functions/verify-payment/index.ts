@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const PLATFORM_WALLET = "QLcWFBchUq7tzK91MqZBexQL7hVohATAgdsoGAGu5Ra";
+const PLATFORM_WALLET = "AUudUn5v4HM2EtkfM9GXSqLBAGUV5CoMgbKPWFPVV2fS";
 const REQUIRED_AMOUNT_SOL = 0.3;
 const LAMPORTS_PER_SOL = 1_000_000_000;
 
