@@ -9,6 +9,7 @@ import { WalletConnectButton } from '../wallet/WalletConnectButton';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserRole } from '@/hooks/useUserRole';
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -27,6 +28,7 @@ const adminItems = [
 function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
   const location = useLocation();
   const { user } = useAuth();
+  const { isAdmin } = useUserRole();
 
   return (
     <>
@@ -85,9 +87,9 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
           );
         })}
 
-        <div className="my-3 border-t border-border/50" />
+        {isAdmin && <div className="my-3 border-t border-border/50" />}
 
-        {adminItems.map((item) => {
+        {isAdmin && adminItems.map((item) => {
           const active = location.pathname === item.to;
           return (
             <Link

@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Coins, Users, BarChart3, Flag, Star, Trash2, Eye, Search, RefreshCw } from 'lucide-react';
+import { Shield, Coins, Users, BarChart3, Flag, Star, Trash2, Eye, Search, RefreshCw, Lock, Loader2 } from 'lucide-react';
+import { Navigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUserRole } from '@/hooks/useUserRole';
 
 interface Token {
   id: string;
@@ -29,6 +32,39 @@ interface Transaction {
 type Tab = 'tokens' | 'transactions' | 'users';
 
 export default function Admin() {
+  const { user, loading: authLoading } = useAuth();
+  const { isAdmin, loading: roleLoading } = useUserRole();
+
+  if (authLoading || roleLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!user) return <Navigate to="/auth" replace />;
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="glass p-8 max-w-md text-center">
+          <div className="w-14 h-14 rounded-2xl bg-destructive/20 flex items-center justify-center mx-auto mb-4">
+            <Lock className="w-7 h-7 text-destructive" />
+          </div>
+          <h1 className="font-display text-xl font-bold mb-2">Access Denied</h1>
+          <p className="text-sm text-muted-foreground">
+            The Admin Panel is restricted to platform administrators only.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return <AdminPanel />;
+}
+
+function AdminPanel() {
   const [tab, setTab] = useState<Tab>('tokens');
   const [tokens, setTokens] = useState<Token[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
