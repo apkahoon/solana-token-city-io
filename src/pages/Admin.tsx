@@ -45,21 +45,7 @@ export default function Admin() {
 
   if (!user) return <Navigate to="/auth" replace />;
 
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="glass p-8 max-w-md text-center">
-          <div className="w-14 h-14 rounded-2xl bg-destructive/20 flex items-center justify-center mx-auto mb-4">
-            <Lock className="w-7 h-7 text-destructive" />
-          </div>
-          <h1 className="font-display text-xl font-bold mb-2">Access Denied</h1>
-          <p className="text-sm text-muted-foreground">
-            The Admin Panel is restricted to platform administrators only.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  if (!isAdmin) return <Navigate to="/dashboard" replace />;
 
   return <AdminPanel />;
 }
