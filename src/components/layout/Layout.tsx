@@ -14,6 +14,11 @@ export const Layout = ({ children }: { children: ReactNode }) => {
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
+      {/* Devnet banner */}
+      <div className="fixed top-0 inset-x-0 z-[60] bg-gradient-to-r from-amber-500/90 to-orange-500/90 text-black text-center text-xs font-semibold py-1 px-3">
+        🧪 DEVNET MODE — Test network. Get free SOL at{' '}
+        <a href="https://faucet.solana.com" target="_blank" rel="noopener noreferrer" className="underline">faucet.solana.com</a>
+      </div>
       {/* Background effects */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] rounded-full bg-neon-purple/5 blur-[120px] animate-pulse-slow" />
