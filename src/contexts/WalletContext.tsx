@@ -9,8 +9,8 @@ interface Props {
 }
 
 export const SolanaWalletProvider: FC<Props> = ({ children }) => {
-  // Mainnet RPC endpoint
-  const endpoint = useMemo(() => 'https://api.mainnet-beta.solana.com', []);
+  // Devnet RPC endpoint (for prototype/investor demo)
+  const endpoint = useMemo(() => 'https://api.devnet.solana.com', []);
   const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
 
   return (
