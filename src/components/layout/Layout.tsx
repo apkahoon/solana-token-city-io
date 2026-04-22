@@ -29,10 +29,10 @@ export const Layout = ({ children }: { children: ReactNode }) => {
       {isLanding || isAuth ? (
         <>
           <Navbar />
-          <main className="relative pt-16">{children}</main>
+          <main className="relative pt-22">{children}</main>
         </>
       ) : (
-        <div className="flex">
+        <div className="flex pt-6">
           <Sidebar />
           <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${isMobile ? 'ml-0 pt-14' : 'ml-56'}`}>
             <main className="relative flex-1 pt-4 pb-4">{children}</main>
