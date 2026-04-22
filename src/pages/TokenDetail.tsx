@@ -197,7 +197,7 @@ export default function TokenDetail() {
             </Link>
             {token.mint_address && (
               <a
-                href={`https://solscan.io/token/${token.mint_address}`}
+                href={`https://explorer.solana.com/address/${token.mint_address}?cluster=devnet`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl glass font-medium hover:bg-muted/80"
