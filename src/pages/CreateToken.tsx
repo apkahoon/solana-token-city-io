@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { sanitizeText, sanitizeUrl, sanitizeHandle, FIELD_LIMITS } from '@/lib/sanitize';
 import { ConfirmationModal } from '@/components/token/ConfirmationModal';
 
-const PLATFORM_WALLET = 'QLcWFBchUq7tzK91MqZBexQL7hVohATAgdsoGAGu5Ra';
+const PLATFORM_WALLET = 'AUudUn5v4HM2EtkfM9GXSqLBAGUV5CoMgbKPWFPVV2fS';
 const FEE_SOL = 0.3;
 
 type Step = 'form' | 'config' | 'payment' | 'creating' | 'success' | 'error';
