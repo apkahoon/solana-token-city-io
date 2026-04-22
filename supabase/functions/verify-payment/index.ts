@@ -136,11 +136,6 @@ serve(async (req) => {
       token_id: token.id,
     });
 
-    await supabase.from("users").upsert(
-      { wallet_address: token_data.creator_wallet },
-      { onConflict: "wallet_address" }
-    );
-
     console.log(`✅ Token created: ${safeName} (${safeSymbol}) | TX: ${tx_hash} | Fee: ${REQUIRED_AMOUNT_SOL} SOL -> ${PLATFORM_WALLET}`);
 
     return new Response(JSON.stringify({ success: true, token }), {
