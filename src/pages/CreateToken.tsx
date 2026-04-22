@@ -356,7 +356,7 @@ export default function CreateToken() {
                 <p className="text-muted-foreground text-sm mb-4">{errorMessage}</p>
                 {txSignature && (
                   <p className="text-xs text-muted-foreground mb-4">
-                    TX: <a href={`https://solscan.io/tx/${txSignature}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-mono">{txSignature.slice(0, 16)}...</a>
+                    TX: <a href={`https://explorer.solana.com/tx/${txSignature}?cluster=devnet`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-mono">{txSignature.slice(0, 16)}...</a>
                   </p>
                 )}
                 <div className="flex gap-3">
@@ -386,7 +386,7 @@ export default function CreateToken() {
                   {txSignature && (
                     <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">TX:</span>
-                      <a href={`https://solscan.io/tx/${txSignature}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-mono text-xs">{txSignature.slice(0, 20)}...</a>
+                      <a href={`https://explorer.solana.com/tx/${txSignature}?cluster=devnet`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-mono text-xs">{txSignature.slice(0, 20)}...</a>
                     </div>
                   )}
                   {createdToken.mint_address && (
