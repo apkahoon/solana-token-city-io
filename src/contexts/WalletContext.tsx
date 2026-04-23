@@ -1,6 +1,7 @@
-import { FC, ReactNode, useEffect, useMemo } from 'react';
+import { FC, ReactNode, useEffect, useMemo, useState } from 'react';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
+import { PhantomWalletAdapter } from '@solana/wallet-adapter-phantom';
 import { clusterApiUrl } from '@solana/web3.js';
 import { useWallet } from '@solana/wallet-adapter-react';
 import '@solana/wallet-adapter-react-ui/styles.css';
@@ -13,7 +14,28 @@ interface Props {
 
 export const SolanaWalletProvider: FC<Props> = ({ children }) => {
   const endpoint = useMemo(() => clusterApiUrl('devnet'), []);
-  const wallets = useMemo(() => [], []);
+  const [phantomDetected, setPhantomDetected] = useState(false);
+
+  useEffect(() => {
+    // Detect Phantom before initializing the adapter
+    const detect = () => {
+      const provider = (window as any)?.phantom?.solana ?? (window as any)?.solana;
+      if (provider?.isPhantom) setPhantomDetected(true);
+    };
+    detect();
+    // Phantom may inject slightly after page load
+    const t = setTimeout(detect, 500);
+    window.addEventListener('load', detect);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('load', detect);
+    };
+  }, []);
+
+  const wallets = useMemo(
+    () => (phantomDetected ? [new PhantomWalletAdapter()] : []),
+    [phantomDetected]
+  );
 
   return (
     <ConnectionProvider endpoint={endpoint}>
