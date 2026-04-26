@@ -17,7 +17,6 @@ const navItems = [
   { to: '/swap', label: 'Swap Tokens', icon: ArrowLeftRight },
   { to: '/liquidity', label: 'Liquidity Manager', icon: Droplets },
   { to: '/security', label: 'Security & Burn', icon: Shield },
-  { to: '/portfolio', label: 'My Portfolio', icon: Briefcase },
   { to: '/trending', label: 'Trending', icon: Flame },
 ];
 
