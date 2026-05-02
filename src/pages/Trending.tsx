@@ -68,7 +68,7 @@ export default function Trending() {
           <h1 className="font-display text-2xl sm:text-4xl font-bold mb-3">
             🔥 <span className="gradient-text">Trending Tokens</span>
           </h1>
-          <p className="text-muted-foreground text-sm">Discover the hottest meme coins on Solana</p>
+          <p className="text-muted-foreground text-sm">Discover the hottest tokens on Solana</p>
         </motion.div>
 
         {/* Tabs */}

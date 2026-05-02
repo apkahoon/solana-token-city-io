@@ -9,7 +9,7 @@ const stats = [
 ];
 
 const features = [
-  { icon: Rocket, title: 'Launch in Seconds', description: 'Create and deploy your meme token on Solana in under a minute.' },
+  { icon: Rocket, title: 'Launch in Seconds', description: 'Create and deploy your token on Solana in under a minute.' },
   { icon: Zap, title: 'Instant Liquidity', description: 'Add liquidity via Raydium pools automatically after launch.' },
   { icon: Shield, title: 'Verified & Secure', description: 'Every payment verified on-chain. No trust needed.' },
   { icon: TrendingUp, title: 'Trending Rankings', description: 'Get visibility through our trending algorithm and boost system.' },
@@ -37,13 +37,13 @@ export default function Landing() {
 
             <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.1 }} className="font-display text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold leading-tight mb-6">
               Launch Your{' '}
-              <span className="gradient-text">Meme Coin</span>
+              <span className="gradient-text">Token</span>
               <br />
               <span className="gradient-text-accent">In Seconds</span>
             </motion.h1>
 
             <motion.p initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.2 }} className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
-              The fastest meme coin launchpad on Solana. Create tokens, add liquidity, and go viral — all in one place.
+              The fastest token launchpad on Solana. Create tokens, add liquidity, and go viral — all in one place.
             </motion.p>
 
             <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.3 }} className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -107,7 +107,7 @@ export default function Landing() {
         <div className="container mx-auto max-w-6xl">
           <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
             <h2 className="font-display text-3xl sm:text-4xl font-bold mb-4">Why <span className="gradient-text">Solana Token City</span>?</h2>
-            <p className="text-muted-foreground">Everything you need to launch your meme coin empire</p>
+            <p className="text-muted-foreground">Everything you need to launch your token empire</p>
           </motion.div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -130,7 +130,7 @@ export default function Landing() {
           <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="glass p-10 sm:p-14 text-center neon-glow">
             <Coins className="w-12 h-12 text-neon-purple mx-auto mb-6" />
             <h2 className="font-display text-3xl sm:text-4xl font-bold mb-4">Ready to <span className="gradient-text-accent">Launch</span>?</h2>
-            <p className="text-muted-foreground mb-8 max-w-xl mx-auto">Create your meme token in under a minute. Only 0.3 SOL to launch.</p>
+            <p className="text-muted-foreground mb-8 max-w-xl mx-auto">Create your token in under a minute. Only 0.3 SOL to launch.</p>
             <Link to="/create" className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-gradient-to-r from-neon-pink to-neon-purple text-primary-foreground font-semibold text-lg neon-glow">
               <Rocket className="w-5 h-5" /> Create Token Now
             </Link>
