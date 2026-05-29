@@ -45,19 +45,28 @@ export default function Trending() {
 
   const loadTokens = async () => {
     setLoading(true);
-    let query = supabase
+    const { data } = await supabase
       .from('tokens')
       .select('id, name, symbol, logo_url, created_at, trending_stats(price, price_change_24h, volume_24h, score)')
-      .eq('is_flagged', false);
+      .eq('is_flagged', false)
+      .order('created_at', { ascending: false })
+      .limit(50);
 
-    if (activeTab === 'new') {
-      query = query.order('created_at', { ascending: false });
-    } else {
-      query = query.order('created_at', { ascending: false });
+    let list = (data as unknown as TokenWithStats[] | null) || [];
+
+    const statsOf = (t: TokenWithStats) =>
+      Array.isArray(t.trending_stats) ? t.trending_stats[0] : t.trending_stats;
+
+    if (activeTab === 'trending') {
+      list = [...list].sort((a, b) => (statsOf(b)?.score || 0) - (statsOf(a)?.score || 0));
+    } else if (activeTab === 'gainers') {
+      list = [...list].sort(
+        (a, b) => (statsOf(b)?.price_change_24h || 0) - (statsOf(a)?.price_change_24h || 0)
+      );
     }
+    // 'new' already sorted by created_at desc
 
-    const { data } = await query.limit(20);
-    setTokens((data as unknown as TokenWithStats[] | null) || []);
+    setTokens(list.slice(0, 20));
     setLoading(false);
   };
 

@@ -136,6 +136,19 @@ serve(async (req) => {
       token_id: token.id,
     });
 
+    // Seed trending_stats so the new token appears in Trending immediately.
+    // Newer tokens start with a small score so they show on the "Trending" tab
+    // ranked just below tokens with real volume.
+    await supabase.from("trending_stats").insert({
+      token_id: token.id,
+      price: 0,
+      price_change_24h: 0,
+      volume_24h: 0,
+      buys_24h: 0,
+      liquidity: 0,
+      score: 1, // seeded baseline; cron job will recompute
+    });
+
     console.log(`✅ Token created: ${safeName} (${safeSymbol}) | TX: ${tx_hash} | Fee: ${REQUIRED_AMOUNT_SOL} SOL -> ${PLATFORM_WALLET}`);
 
     return new Response(JSON.stringify({ success: true, token }), {
