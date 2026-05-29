@@ -34,7 +34,7 @@ serve(async (req) => {
     }
 
     // Use server-side RPC (never exposed to client)
-    const RPC_URL = Deno.env.get("SOLANA_RPC_URL") || "https://api.devnet.solana.com";
+    const RPC_URL = Deno.env.get("SOLANA_RPC_URL") || "https://api.mainnet-beta.solana.com";
 
     const rpcResponse = await fetch(RPC_URL, {
       method: "POST",
