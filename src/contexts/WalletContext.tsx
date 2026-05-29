@@ -13,7 +13,8 @@ interface Props {
 }
 
 export const SolanaWalletProvider: FC<Props> = ({ children }) => {
-  const endpoint = useMemo(() => clusterApiUrl('devnet'), []);
+  // Mainnet — must match the network your Phantom wallet is on
+  const endpoint = useMemo(() => clusterApiUrl('mainnet-beta'), []);
   const [phantomDetected, setPhantomDetected] = useState(false);
 
   useEffect(() => {
