@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, User, Rocket, Eye, EyeOff, Loader2 } from 'lucide-react';
@@ -13,8 +13,21 @@ export default function Auth() {
   const [name, setName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+
+  // If already signed in (e.g. via Google), skip the auth form entirely
+  useEffect(() => {
+    if (!authLoading && user) navigate('/dashboard', { replace: true });
+  }, [user, authLoading, navigate]);
+
+  if (authLoading || user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
