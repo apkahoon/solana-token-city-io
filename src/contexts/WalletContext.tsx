@@ -2,7 +2,6 @@ import { FC, ReactNode, useEffect, useMemo, useState } from 'react';
 import { ConnectionProvider, WalletProvider } from '@solana/wallet-adapter-react';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import { PhantomWalletAdapter } from '@solana/wallet-adapter-phantom';
-import { clusterApiUrl } from '@solana/web3.js';
 import { useWallet } from '@solana/wallet-adapter-react';
 import '@solana/wallet-adapter-react-ui/styles.css';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,8 +12,13 @@ interface Props {
 }
 
 export const SolanaWalletProvider: FC<Props> = ({ children }) => {
-  // Mainnet — must match the network your Phantom wallet is on
-  const endpoint = useMemo(() => clusterApiUrl('mainnet-beta'), []);
+  // Route all RPC traffic through our edge function proxy.
+  // Public `api.mainnet-beta.solana.com` blocks browser requests (403),
+  // so we proxy through `rpc-proxy` which can use a paid RPC via SOLANA_RPC_URL.
+  const endpoint = useMemo(
+    () => `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/rpc-proxy`,
+    []
+  );
   const [phantomDetected, setPhantomDetected] = useState(false);
 
   useEffect(() => {
