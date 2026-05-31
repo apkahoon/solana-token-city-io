@@ -43,7 +43,16 @@ export const SolanaWalletProvider: FC<Props> = ({ children }) => {
   );
 
   return (
-    <ConnectionProvider endpoint={endpoint}>
+    <ConnectionProvider
+      endpoint={endpoint}
+      config={{
+        commitment: 'confirmed',
+        // Our endpoint is an HTTPS edge function; disable the derived wss:// subscription
+        // endpoint so callers fall back to HTTP polling (getSignatureStatuses, etc.).
+        disableRetryOnRateLimit: false,
+        wsEndpoint: undefined as unknown as string,
+      }}
+    >
       <WalletProvider wallets={wallets} autoConnect={false}>
         <WalletModalProvider>
           <WalletProfileSync />

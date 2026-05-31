@@ -116,9 +116,28 @@ export default function CreateToken() {
       const signature = await sendTransaction(transaction, connection);
       setTxSignature(signature);
 
-      // Wait for confirmation
-      const latestBlockhash = await connection.getLatestBlockhash();
-      await connection.confirmTransaction({ signature, ...latestBlockhash });
+      // Poll signature status over HTTP (WebSocket subscriptions don't work through our HTTPS proxy).
+      // Wait up to ~60s for the network to confirm the transfer.
+      const confirmed = await (async () => {
+        for (let i = 0; i < 30; i++) {
+          try {
+            const { value } = await connection.getSignatureStatuses([signature]);
+            const status = value?.[0];
+            if (status?.err) throw new Error('Transaction failed on-chain');
+            if (status && (status.confirmationStatus === 'confirmed' || status.confirmationStatus === 'finalized')) {
+              return true;
+            }
+          } catch (e) {
+            if ((e as Error).message?.includes('on-chain')) throw e;
+          }
+          await new Promise((r) => setTimeout(r, 2000));
+        }
+        return false;
+      })();
+
+      if (!confirmed) {
+        throw new Error('Transaction confirmation timed out. Your SOL was sent — please contact support with the TX hash.');
+      }
 
       // Sanitize all inputs before sending
       const sanitizedData = {
@@ -134,19 +153,26 @@ export default function CreateToken() {
         logo_url: logoUrl,
       };
 
-      // Verify payment on backend
+      // Verify payment on backend, retrying while the RPC node indexes the new tx.
       const verifyUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verify-payment`;
-      const verifyRes = await fetch(verifyUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
-        body: JSON.stringify({ tx_hash: signature, token_data: sanitizedData }),
-      });
-
-      const result = await verifyRes.json();
-      if (!verifyRes.ok) throw new Error(result.error || 'Payment verification failed');
+      let result: any = null;
+      let lastErr = '';
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const verifyRes = await fetch(verifyUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ tx_hash: signature, token_data: sanitizedData }),
+        });
+        result = await verifyRes.json();
+        if (verifyRes.ok) break;
+        lastErr = result?.error || 'Payment verification failed';
+        if (!/not found|confirming/i.test(lastErr)) throw new Error(lastErr);
+        await new Promise((r) => setTimeout(r, 3000));
+      }
+      if (!result?.success) throw new Error(lastErr || 'Payment verification failed');
 
       setCreatedToken(result.token);
       setStep('success');
