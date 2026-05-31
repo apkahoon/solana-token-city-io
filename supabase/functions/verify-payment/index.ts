@@ -36,25 +36,28 @@ serve(async (req) => {
     // Use server-side RPC (never exposed to client)
     const RPC_URL = Deno.env.get("SOLANA_RPC_URL") || "https://api.mainnet-beta.solana.com";
 
-    const rpcResponse = await fetch(RPC_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0", id: 1,
-        method: "getTransaction",
-        params: [tx_hash, { encoding: "jsonParsed", maxSupportedTransactionVersion: 0 }],
-      }),
-    });
+    // Retry getTransaction — RPC nodes lag behind confirmation by a few seconds.
+    let tx: any = null;
+    for (let attempt = 0; attempt < 6; attempt++) {
+      const rpcResponse = await fetch(RPC_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0", id: 1,
+          method: "getTransaction",
+          params: [tx_hash, { encoding: "jsonParsed", maxSupportedTransactionVersion: 0 }],
+        }),
+      });
+      const rpcData = await rpcResponse.json();
+      if (rpcData.result) { tx = rpcData.result; break; }
+      await new Promise((r) => setTimeout(r, 2500));
+    }
 
-    const rpcData = await rpcResponse.json();
-
-    if (!rpcData.result) {
+    if (!tx) {
       return new Response(JSON.stringify({ error: "Transaction not found. It may still be confirming." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const tx = rpcData.result;
     if (tx.meta?.err) {
       return new Response(JSON.stringify({ error: "Transaction failed on-chain" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
