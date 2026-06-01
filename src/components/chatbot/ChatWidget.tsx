@@ -30,7 +30,7 @@ const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chatbot`;
 export function ChatWidget() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([
-    { role: 'assistant', content: 'Hey! 👋 I\'m your **Solana Token City** assistant. Ask me anything about creating tokens, adding liquidity, or using the platform!' }
+    { role: 'assistant', content: 'Hey! 👋 I\'m your **SolForge** assistant. Ask me anything about creating tokens, adding liquidity, or using the platform!' }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);

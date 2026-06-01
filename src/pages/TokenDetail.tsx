@@ -47,7 +47,7 @@ export default function TokenDetail() {
   const shareToken = () => {
     const url = window.location.href;
     if (navigator.share) {
-      navigator.share({ title: `${token?.name} on Solana Token City`, url });
+      navigator.share({ title: `${token?.name} on SolForge`, url });
     } else {
       copyToClipboard(url, 'Link');
     }

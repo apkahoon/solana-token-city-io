@@ -13,7 +13,7 @@ interface Props {
 
 export const SolanaWalletProvider: FC<Props> = ({ children }) => {
   // Route all RPC traffic through our edge function proxy.
-  // Public `api.mainnet-beta.solana.com` blocks browser requests (403),
+  // Public `api.devnet.solana.com` may rate-limit browser requests,
   // so we proxy through `rpc-proxy` which can use a paid RPC via SOLANA_RPC_URL.
   const endpoint = useMemo(
     () => `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/rpc-proxy`,

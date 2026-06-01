@@ -12,7 +12,7 @@ export const Navbar = () => {
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-neon-purple to-neon-pink flex items-center justify-center">
             <Rocket className="w-4 h-4 text-primary-foreground" />
           </div>
-          <span className="font-display font-bold text-sm gradient-text">Solana Token City</span>
+          <span className="font-display font-bold text-sm gradient-text">SolForge</span>
         </Link>
 
         <div className="flex items-center gap-3">

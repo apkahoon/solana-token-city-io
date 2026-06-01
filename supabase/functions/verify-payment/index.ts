@@ -34,7 +34,7 @@ serve(async (req) => {
     }
 
     // Use server-side RPC (never exposed to client)
-    const RPC_URL = Deno.env.get("SOLANA_RPC_URL") || "https://api.mainnet-beta.solana.com";
+    const RPC_URL = Deno.env.get("SOLANA_RPC_URL") || "https://api.devnet.solana.com";
 
     // Retry getTransaction — RPC nodes lag behind confirmation by a few seconds.
     let tx: any = null;
