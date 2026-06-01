@@ -35,9 +35,27 @@ serve(async (req) => {
 
     // Use server-side RPC (never exposed to client)
     const RPC_URL = Deno.env.get("SOLANA_RPC_URL") || "https://api.devnet.solana.com";
+    console.log(`[verify-payment] Verifying tx=${tx_hash} via RPC=${RPC_URL}`);
+
+    // Check signature status first for richer logs
+    try {
+      const sigRes = await fetch(RPC_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0", id: 1, method: "getSignatureStatuses",
+          params: [[tx_hash], { searchTransactionHistory: true }],
+        }),
+      });
+      const sigData = await sigRes.json();
+      console.log(`[verify-payment] getSignatureStatuses:`, JSON.stringify(sigData?.result?.value?.[0] ?? null));
+    } catch (e) {
+      console.warn(`[verify-payment] getSignatureStatuses failed`, e);
+    }
 
     // Retry getTransaction — RPC nodes lag behind confirmation by a few seconds.
     let tx: any = null;
+    let lastRpcError: any = null;
     for (let attempt = 0; attempt < 6; attempt++) {
       const rpcResponse = await fetch(RPC_URL, {
         method: "POST",
@@ -45,32 +63,45 @@ serve(async (req) => {
         body: JSON.stringify({
           jsonrpc: "2.0", id: 1,
           method: "getTransaction",
-          params: [tx_hash, { encoding: "jsonParsed", maxSupportedTransactionVersion: 0 }],
+          params: [tx_hash, { encoding: "jsonParsed", maxSupportedTransactionVersion: 0, commitment: "confirmed" }],
         }),
       });
       const rpcData = await rpcResponse.json();
-      if (rpcData.result) { tx = rpcData.result; break; }
+      if (rpcData.error) {
+        lastRpcError = rpcData.error;
+        console.warn(`[verify-payment] attempt=${attempt} rpc error:`, JSON.stringify(rpcData.error));
+      }
+      if (rpcData.result) {
+        tx = rpcData.result;
+        console.log(`[verify-payment] tx found on attempt=${attempt} slot=${tx.slot} err=${JSON.stringify(tx.meta?.err)}`);
+        break;
+      }
+      console.log(`[verify-payment] attempt=${attempt} tx not yet visible, retrying...`);
       await new Promise((r) => setTimeout(r, 2500));
     }
 
     if (!tx) {
-      return new Response(JSON.stringify({ error: "Transaction not found. It may still be confirming." }), {
+      console.error(`[verify-payment] Tx not found after retries. lastErr=${JSON.stringify(lastRpcError)}`);
+      return new Response(JSON.stringify({ error: "Transaction not found. It may still be confirming.", details: lastRpcError }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
     if (tx.meta?.err) {
-      return new Response(JSON.stringify({ error: "Transaction failed on-chain" }), {
+      console.error(`[verify-payment] On-chain failure:`, JSON.stringify(tx.meta.err), "logs:", JSON.stringify(tx.meta?.logMessages));
+      return new Response(JSON.stringify({ error: "Transaction failed on-chain", details: tx.meta.err, logs: tx.meta?.logMessages }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     // Verify the payment
     const instructions = tx.transaction?.message?.instructions || [];
+    console.log(`[verify-payment] Parsed instructions count=${instructions.length}`);
     let paymentVerified = false;
 
     for (const ix of instructions) {
       if (ix.parsed?.type === "transfer" && ix.program === "system") {
         const { destination, lamports } = ix.parsed.info;
+        console.log(`[verify-payment] system transfer -> ${destination} lamports=${lamports}`);
         if (destination === PLATFORM_WALLET && Number(lamports) >= REQUIRED_AMOUNT_SOL * LAMPORTS_PER_SOL * 0.99) {
           paymentVerified = true;
           break;
@@ -79,6 +110,7 @@ serve(async (req) => {
     }
 
     if (!paymentVerified) {
+      console.error(`[verify-payment] Payment NOT verified for tx=${tx_hash}. Expected >= ${REQUIRED_AMOUNT_SOL} SOL to ${PLATFORM_WALLET}`);
       return new Response(JSON.stringify({ error: "Payment not verified. Must send 0.3 SOL to platform wallet." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
