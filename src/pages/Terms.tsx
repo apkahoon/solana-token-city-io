@@ -10,10 +10,10 @@ export default function Terms() {
             <p className="text-muted-foreground"><em>Last updated: April 13, 2026</em></p>
 
             <h2 className="font-display text-lg font-semibold mt-6 mb-2">1. Acceptance of Terms</h2>
-            <p className="text-muted-foreground">By accessing or using Solana Token City ("the Platform"), you agree to be bound by these Terms of Service. If you do not agree, do not use the Platform.</p>
+            <p className="text-muted-foreground">By accessing or using SolForge ("the Platform"), you agree to be bound by these Terms of Service. If you do not agree, do not use the Platform.</p>
 
             <h2 className="font-display text-lg font-semibold mt-6 mb-2">2. Platform Description</h2>
-            <p className="text-muted-foreground">Solana Token City provides tools for creating SPL tokens on the Solana blockchain. We do not provide financial advice, investment recommendations, or custodial services.</p>
+            <p className="text-muted-foreground">SolForge provides tools for creating SPL tokens on the Solana blockchain. We do not provide financial advice, investment recommendations, or custodial services.</p>
 
             <h2 className="font-display text-lg font-semibold mt-6 mb-2">3. Eligibility</h2>
             <p className="text-muted-foreground">You must be at least 18 years old and legally able to enter into contracts in your jurisdiction to use this Platform.</p>
@@ -28,7 +28,7 @@ export default function Terms() {
             <p className="text-muted-foreground">The Platform is provided "as is" without warranties of any kind. We do not guarantee uptime, accuracy, or fitness for any particular purpose.</p>
 
             <h2 className="font-display text-lg font-semibold mt-6 mb-2">7. Limitation of Liability</h2>
-            <p className="text-muted-foreground">In no event shall Solana Token City be liable for any indirect, incidental, or consequential damages arising from your use of the Platform.</p>
+            <p className="text-muted-foreground">In no event shall SolForge be liable for any indirect, incidental, or consequential damages arising from your use of the Platform.</p>
 
             <h2 className="font-display text-lg font-semibold mt-6 mb-2">8. Contact</h2>
             <p className="text-muted-foreground">For questions about these terms, contact us through our official channels.</p>

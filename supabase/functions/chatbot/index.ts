@@ -24,7 +24,7 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `You are the Solana Token City AI assistant. You help users understand how to:
+            content: `You are the SolForge AI assistant. You help users understand how to:
 - Create meme tokens on Solana (costs 0.3 SOL)
 - Add liquidity to their tokens
 - Boost their token's visibility on the trending page

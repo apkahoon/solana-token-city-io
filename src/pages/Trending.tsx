@@ -105,7 +105,7 @@ export default function Trending() {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass p-12 text-center">
             <Rocket className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="font-display text-xl font-bold mb-2">No Tokens Yet</h3>
-            <p className="text-muted-foreground text-sm mb-6">Be the first to launch a token on Solana Token City!</p>
+            <p className="text-muted-foreground text-sm mb-6">Be the first to launch a token on SolForge!</p>
             <Link to="/create" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-secondary text-primary-foreground font-semibold">
               <Rocket className="w-5 h-5" /> Launch First Token
             </Link>

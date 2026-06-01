@@ -8,11 +8,11 @@ export const Footer = () => {
           <div className="w-5 h-5 rounded-md bg-gradient-to-br from-neon-purple to-neon-pink flex items-center justify-center">
             <Rocket className="w-3 h-3 text-primary-foreground" />
           </div>
-          <span className="text-xs font-display font-bold gradient-text">Solana Token City</span>
+          <span className="text-xs font-display font-bold gradient-text">SolForge</span>
         </div>
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
-          <span>Solana Mainnet</span>
-          <span>© 2026 Solana Token City</span>
+          <span>Solana Devnet</span>
+          <span>© 2026 SolForge</span>
         </div>
       </div>
     </footer>

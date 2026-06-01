@@ -1,8 +1,8 @@
-# 🌆 Solana Token City
+# 🌆 SolForge
 
 > Launch, trade, and grow Solana tokens — all from one beautiful dashboard.
 
-Solana Token City is a full-stack Web3 platform for creating SPL tokens, adding liquidity on Raydium, swapping, boosting visibility, and tracking trending tokens on Solana **Mainnet**. Built with React, Supabase, and the Solana web3.js / Raydium SDKs.
+SolForge is a full-stack Web3 platform for creating SPL tokens, adding liquidity on Raydium, swapping, boosting visibility, and tracking trending tokens on Solana **Devnet**. Built with React, Supabase, and the Solana web3.js / Raydium SDKs.
 
 **🔗 Live demo:** https://solana-token-city-io.lovable.app
 
@@ -58,7 +58,7 @@ Solana Token City is a full-stack Web3 platform for creating SPL tokens, adding 
 - **Phantom Wallet** browser extension
 - A **Supabase** project (free tier works)
 - A **Pinata** account for IPFS uploads
-- A funded Solana wallet (Mainnet SOL for real tx, or use Devnet for testing)
+- A funded Solana wallet (Devnet SOL for testing)
 
 ### 1. Clone the repo
 
@@ -107,7 +107,7 @@ In your Supabase Dashboard → Project Settings → Edge Functions → Secrets, 
 | Secret | Purpose |
 |---|---|
 | `PINATA_JWT` | IPFS uploads for token metadata |
-| `SOLANA_RPC_URL` | Mainnet RPC (Helius / QuickNode recommended) |
+| `SOLANA_RPC_URL` | Devnet RPC (Helius / QuickNode recommended) |
 | `PLATFORM_WALLET` | Wallet that receives platform fees |
 | `LOVABLE_API_KEY` | AI chatbot (auto-provisioned on Lovable) |
 | `TURNSTILE_SECRET_KEY` | Cloudflare bot protection |

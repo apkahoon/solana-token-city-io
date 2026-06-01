@@ -70,7 +70,7 @@ export default function Auth() {
             {mode === 'login' ? 'Welcome Back' : 'Create Account'}
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            {mode === 'login' ? 'Sign in to your Solana Token City account' : 'Join Solana Token City today'}
+            {mode === 'login' ? 'Sign in to your SolForge account' : 'Join SolForge today'}
           </p>
         </div>
 

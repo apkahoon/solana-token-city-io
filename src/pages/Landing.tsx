@@ -31,7 +31,7 @@ export default function Landing() {
             <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
               <div className="inline-flex items-center gap-2 px-4 py-1.5 glass rounded-full text-xs font-medium text-muted-foreground mb-8">
                 <div className="w-2 h-2 rounded-full bg-neon-green animate-pulse" />
-                Live on Solana Mainnet
+                Live on Solana Devnet
               </div>
             </motion.div>
 
@@ -73,7 +73,7 @@ export default function Landing() {
         <div className="container mx-auto max-w-6xl">
           <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
             <h2 className="font-display text-3xl sm:text-4xl font-bold mb-4">🔥 <span className="gradient-text">Trending Now</span></h2>
-            <p className="text-muted-foreground">Top performing tokens on Solana Token City</p>
+            <p className="text-muted-foreground">Top performing tokens on SolForge</p>
           </motion.div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -106,7 +106,7 @@ export default function Landing() {
       <section className="py-20 px-4">
         <div className="container mx-auto max-w-6xl">
           <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
-            <h2 className="font-display text-3xl sm:text-4xl font-bold mb-4">Why <span className="gradient-text">Solana Token City</span>?</h2>
+            <h2 className="font-display text-3xl sm:text-4xl font-bold mb-4">Why <span className="gradient-text">SolForge</span>?</h2>
             <p className="text-muted-foreground">Everything you need to launch your token empire</p>
           </motion.div>
 
@@ -145,9 +145,9 @@ export default function Landing() {
             <div className="w-6 h-6 rounded-md bg-gradient-to-br from-neon-purple to-neon-pink flex items-center justify-center">
               <Rocket className="w-3 h-3 text-primary-foreground" />
             </div>
-            <span className="font-display font-bold text-sm gradient-text">Solana Token City</span>
+            <span className="font-display font-bold text-sm gradient-text">SolForge</span>
           </div>
-          <p className="text-xs text-muted-foreground">© 2026 Solana Token City. Built on Solana.</p>
+          <p className="text-xs text-muted-foreground">© 2026 SolForge. Built on Solana.</p>
         </div>
       </footer>
     </div>
