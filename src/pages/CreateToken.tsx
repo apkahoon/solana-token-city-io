@@ -205,7 +205,7 @@ export default function CreateToken() {
   };
 
   const shareOnTwitter = () => {
-    const text = `I just launched $${createdToken?.symbol} on @SolanaTokenCity! 🚀\n\nCheck it out: ${window.location.origin}/token/${createdToken?.id}`;
+    const text = `I just launched $${createdToken?.symbol} on @SolForge! 🚀\n\nCheck it out: ${window.location.origin}/token/${createdToken?.id}`;
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
   };
 
