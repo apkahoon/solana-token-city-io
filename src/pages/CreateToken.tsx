@@ -205,7 +205,7 @@ export default function CreateToken() {
   };
 
   const shareOnTwitter = () => {
-    const text = `I just launched $${createdToken?.symbol} on @SolanaTokenCity! 🚀\n\nCheck it out: ${window.location.origin}/token/${createdToken?.id}`;
+    const text = `I just launched $${createdToken?.symbol} on @SolForge! 🚀\n\nCheck it out: ${window.location.origin}/token/${createdToken?.id}`;
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
   };
 
@@ -222,8 +222,8 @@ export default function CreateToken() {
     <div className="min-h-screen py-8 px-4">
       <div className="max-w-5xl mx-auto">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <h1 className="font-display text-2xl sm:text-3xl font-bold mb-2">Solana Token Creator</h1>
-          <p className="text-muted-foreground text-sm">Mint fully compliant SPL tokens on Solana with zero coding.</p>
+          <h1 className="font-display text-2xl sm:text-3xl font-bold mb-2">SolForge Token Creator</h1>
+          <p className="text-muted-foreground text-sm">Mint fully compliant SPL tokens on Solana Devnet with zero coding.</p>
         </motion.div>
 
         {/* Progress steps */}
