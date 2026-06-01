@@ -1,1 +1,4 @@
 project_id = "ekuzejvrgvlbqfyuftlz"
+
+[functions.rpc-proxy]
+verify_jwt = false
