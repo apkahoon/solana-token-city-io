@@ -47,10 +47,14 @@ export const SolanaWalletProvider: FC<Props> = ({ children }) => {
       endpoint={endpoint}
       config={{
         commitment: 'confirmed',
-        // Our endpoint is an HTTPS edge function; disable the derived wss:// subscription
-        // endpoint so callers fall back to HTTP polling (getSignatureStatuses, etc.).
         disableRetryOnRateLimit: false,
         wsEndpoint: undefined as unknown as string,
+        // Supabase Edge Functions gateway requires the apikey header on every request.
+        // @solana/web3.js Connection does not know about Supabase, so inject it here.
+        httpHeaders: {
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
       }}
     >
       <WalletProvider wallets={wallets} autoConnect={false}>
