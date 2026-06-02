@@ -91,7 +91,10 @@ export default function CreateToken() {
             `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-to-ipfs`,
             {
               method: 'POST',
-              headers: { Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+              headers: {
+                apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+                Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+              },
               body: ipfsForm,
             }
           );
@@ -162,6 +165,7 @@ export default function CreateToken() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
           body: JSON.stringify({ tx_hash: signature, token_data: sanitizedData }),
