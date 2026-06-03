@@ -36,7 +36,12 @@ const USDC: TokenOpt = {
 
 export default function SwapTokens() {
   const { connected, publicKey, signTransaction } = useWallet();
-  const { connection } = useConnection();
+  // Jupiter operates on Solana mainnet. Use a dedicated mainnet connection
+  // (the app-wide ConnectionProvider may be pointed at devnet via rpc-proxy).
+  const connection = useMemo(
+    () => new Connection('https://solana-rpc.publicnode.com', { commitment: 'confirmed' }),
+    []
+  );
   const { setVisible } = useWalletModal();
 
   const [tokenList, setTokenList] = useState<TokenOpt[]>([SOL, USDC]);
