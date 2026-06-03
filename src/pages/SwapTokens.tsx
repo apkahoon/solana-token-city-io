@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowDownUp, Settings, ChevronDown, Loader2, ExternalLink } from 'lucide-react';
-import { useWallet, useConnection } from '@solana/wallet-adapter-react';
+import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
-import { PublicKey, VersionedTransaction, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { Connection, PublicKey, VersionedTransaction, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -36,7 +36,12 @@ const USDC: TokenOpt = {
 
 export default function SwapTokens() {
   const { connected, publicKey, signTransaction } = useWallet();
-  const { connection } = useConnection();
+  // Jupiter operates on Solana mainnet. Use a dedicated mainnet connection
+  // (the app-wide ConnectionProvider may be pointed at devnet via rpc-proxy).
+  const connection = useMemo(
+    () => new Connection('https://solana-rpc.publicnode.com', { commitment: 'confirmed' }),
+    []
+  );
   const { setVisible } = useWalletModal();
 
   const [tokenList, setTokenList] = useState<TokenOpt[]>([SOL, USDC]);
