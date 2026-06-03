@@ -344,7 +344,7 @@ export default function SwapTokens() {
 
           {lastTx && (
             <a
-              href={`https://solscan.io/tx/${lastTx}`}
+              href={`https://solscan.io/tx/${lastTx}?cluster=devnet`}
               target="_blank"
               rel="noreferrer"
               className="mt-3 flex items-center justify-center gap-1 text-xs text-primary hover:underline"
