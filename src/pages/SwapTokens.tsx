@@ -36,10 +36,10 @@ const USDC: TokenOpt = {
 
 export default function SwapTokens() {
   const { connected, publicKey, signTransaction } = useWallet();
-  // Jupiter operates on Solana mainnet. Use a dedicated mainnet connection
-  // (the app-wide ConnectionProvider may be pointed at devnet via rpc-proxy).
+  // Swap runs on Solana devnet. Use a dedicated devnet connection so blockhash
+  // and confirmation match the network Jupiter's devnet API builds against.
   const connection = useMemo(
-    () => new Connection('https://solana-rpc.publicnode.com', { commitment: 'confirmed' }),
+    () => new Connection('https://api.devnet.solana.com', { commitment: 'confirmed' }),
     []
   );
   const { setVisible } = useWalletModal();
@@ -344,7 +344,7 @@ export default function SwapTokens() {
 
           {lastTx && (
             <a
-              href={`https://solscan.io/tx/${lastTx}`}
+              href={`https://solscan.io/tx/${lastTx}?cluster=devnet`}
               target="_blank"
               rel="noreferrer"
               className="mt-3 flex items-center justify-center gap-1 text-xs text-primary hover:underline"
