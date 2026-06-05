@@ -122,7 +122,7 @@ export async function executeOrcaDevnetSwap(opts: {
     Percentage.fromFraction(slippageBps, 10_000),
     ctx.program.programId,
     ctx.fetcher,
-    "confirmed" as any
+    undefined as any
   );
 
   const estOut = new Decimal(quote.estimatedAmountOut.toString()).div(
