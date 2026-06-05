@@ -182,6 +182,8 @@ export type Database = {
           amount: number
           created_at: string
           id: string
+          is_simulated: boolean
+          metadata: Json
           status: string
           token_id: string | null
           tx_hash: string | null
@@ -192,6 +194,8 @@ export type Database = {
           amount: number
           created_at?: string
           id?: string
+          is_simulated?: boolean
+          metadata?: Json
           status?: string
           token_id?: string | null
           tx_hash?: string | null
@@ -202,6 +206,8 @@ export type Database = {
           amount?: number
           created_at?: string
           id?: string
+          is_simulated?: boolean
+          metadata?: Json
           status?: string
           token_id?: string | null
           tx_hash?: string | null
