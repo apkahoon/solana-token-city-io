@@ -84,10 +84,7 @@ export async function executeOrcaDevnetSwap(opts: {
     commitment: "confirmed",
     preflightCommitment: "confirmed",
   });
-  const ctx = WhirlpoolContext.withProvider(
-    provider,
-    ORCA_WHIRLPOOL_PROGRAM_ID
-  );
+  const ctx = WhirlpoolContext.withProvider(provider);
   const client = buildWhirlpoolClient(ctx);
 
   // Token mints must be sorted for the PDA. PDAUtil handles that internally if
