@@ -527,10 +527,12 @@ export default function SwapTokens() {
 
           <button
             onClick={handleSwap}
-            disabled={connected && !canSwap}
+            disabled={!!user && connected && !canSwap}
             className="w-full mt-4 flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-neon-purple to-neon-blue text-primary-foreground font-semibold neon-glow disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {!connected
+            {!user
+              ? 'Sign in to Swap'
+              : !connected
               ? 'Connect Wallet to Swap'
               : swapping
               ? (<><Loader2 className="w-4 h-4 animate-spin" /> {isOrcaRoute ? 'Swapping on Orca…' : 'Swapping…'}</>)
