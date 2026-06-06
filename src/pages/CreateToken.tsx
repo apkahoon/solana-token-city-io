@@ -9,6 +9,7 @@ import { Rocket, Upload, Coins, ArrowRight, Loader2, AlertCircle, Globe, Twitter
 import { toast } from 'sonner';
 import { sanitizeText, sanitizeUrl, sanitizeHandle, FIELD_LIMITS } from '@/lib/sanitize';
 import { ConfirmationModal } from '@/components/token/ConfirmationModal';
+import { useAuth } from '@/contexts/AuthContext';
 
 const PLATFORM_WALLET = 'AUudUn5v4HM2EtkfM9GXSqLBAGUV5CoMgbKPWFPVV2fS';
 const FEE_SOL = 0.3;
@@ -25,6 +26,7 @@ interface CreatedToken {
 
 export default function CreateToken() {
   const { publicKey, connected, sendTransaction } = useWallet();
+  const { user } = useAuth();
   const { connection } = useConnection();
   const { setVisible } = useWalletModal();
   const navigate = useNavigate();
@@ -60,6 +62,7 @@ export default function CreateToken() {
 
   const handleBasicSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) { toast.error('Sign in before creating a token'); navigate('/auth'); return; }
     if (!connected) { setVisible(true); return; }
     setStep('config');
   };
@@ -305,7 +308,7 @@ export default function CreateToken() {
                 </div>
 
                 <button type="submit" className="w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-primary to-secondary text-primary-foreground font-semibold">
-                  {connected ? <>Next <ArrowRight className="w-4 h-4" /></> : <>Connect Wallet to Continue</>}
+                  {!user ? 'Sign in to Continue' : connected ? <>Next <ArrowRight className="w-4 h-4" /></> : <>Connect Wallet to Continue</>}
                 </button>
               </motion.form>
             )}

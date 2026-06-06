@@ -4,8 +4,10 @@ import { Droplets, Plus, Lock, Unlock, ExternalLink, Loader2 } from 'lucide-reac
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { SystemProgram, Transaction, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 const PLATFORM_WALLET = 'AUudUn5v4HM2EtkfM9GXSqLBAGUV5CoMgbKPWFPVV2fS';
 const POOL_FEE_SOL = 0.2;
@@ -14,6 +16,8 @@ export default function LiquidityManager() {
   const { connected, publicKey, sendTransaction } = useWallet();
   const { connection } = useConnection();
   const { setVisible } = useWalletModal();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [pools, setPools] = useState<any[]>([]);
   const [tokens, setTokens] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,6 +43,7 @@ export default function LiquidityManager() {
   };
 
   const handleCreatePool = async () => {
+    if (!user) { toast.error('Sign in before creating liquidity'); navigate('/auth'); return; }
     if (!publicKey || !sendTransaction) { setVisible(true); return; }
     if (!form.tokenId) { toast.error('Please select a token'); return; }
     const solAmt = Number(form.solAmount);
@@ -124,15 +129,15 @@ export default function LiquidityManager() {
     }
   };
 
-  if (!connected) {
+  if (!user || !connected) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="glass p-10 text-center max-w-md">
           <Droplets className="w-12 h-12 text-neon-blue mx-auto mb-4" />
-          <h2 className="font-display text-xl font-bold mb-2">Connect Your Wallet</h2>
-          <p className="text-muted-foreground text-sm mb-6">Connect to manage your liquidity pools</p>
-          <button onClick={() => setVisible(true)} className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-neon-purple to-neon-blue text-primary-foreground font-semibold neon-glow">
-            Connect Wallet
+          <h2 className="font-display text-xl font-bold mb-2">{!user ? 'Sign In Required' : 'Connect Your Wallet'}</h2>
+          <p className="text-muted-foreground text-sm mb-6">{!user ? 'Sign in to manage liquidity pools linked to your account.' : 'Connect to manage your liquidity pools'}</p>
+          <button onClick={() => (!user ? navigate('/auth') : setVisible(true))} className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-neon-purple to-neon-blue text-primary-foreground font-semibold neon-glow">
+            {!user ? 'Sign In' : 'Connect Wallet'}
           </button>
         </motion.div>
       </div>
