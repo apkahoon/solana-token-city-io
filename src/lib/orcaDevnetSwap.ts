@@ -87,10 +87,8 @@ export async function executeOrcaDevnetSwap(opts: {
   const ctx = WhirlpoolContext.withProvider(provider);
   const client = buildWhirlpoolClient(ctx);
 
-  // Token mints must be sorted for the PDA. PDAUtil handles that internally if
-  // you pass them in canonical order; we always pass (wSOL, devUSDC) since
-  // wSOL's pubkey sorts before devUSDC's.
-  const [mintA, mintB] = [DEVNET_WSOL, DEVNET_USDC];
+  // Whirlpool PDAs use canonical mint ordering; devUSDC sorts before wSOL.
+  const [mintA, mintB] = [DEVNET_USDC, DEVNET_WSOL];
   const decimalsByMint = new Map<string, number>([
     [DEVNET_WSOL.toBase58(), 9],
     [DEVNET_USDC.toBase58(), 6],
