@@ -4,8 +4,10 @@ import { ArrowDownUp, Settings, ChevronDown, Loader2, Info, ExternalLink, Shield
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { Connection, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   executeOrcaDevnetSwap,
   DEVNET_USDC,
@@ -91,6 +93,8 @@ export default function SwapTokens() {
   const wallet = useWallet();
   const { connected, publicKey } = wallet;
   const { setVisible } = useWalletModal();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const connection = useMemo(
     () =>
       new Connection(
@@ -282,6 +286,11 @@ export default function SwapTokens() {
   );
 
   const handleSwap = useCallback(async () => {
+    if (!user) {
+      toast.error('Sign in before swapping so receipts can be saved');
+      navigate('/auth');
+      return;
+    }
     if (!connected || !publicKey) return setVisible(true);
     if (!toToken) {
       toast.error('Pick a token to receive');
@@ -355,7 +364,7 @@ export default function SwapTokens() {
       setSwapping(false);
     }
   }, [
-    connected, publicKey, fromToken, toToken, fromAmount, solBalance,
+    user, navigate, connected, publicKey, fromToken, toToken, fromAmount, solBalance,
     isOrcaRoute, slippage, connection, wallet, recordReceipt,
     unsupported, outAmount, minReceived, priceImpact, setVisible,
   ]);
@@ -364,6 +373,7 @@ export default function SwapTokens() {
     fromToken.isSol && solBalance !== null && Number(fromAmount) > 0 && Number(fromAmount) > solBalance;
 
   const canSwap =
+    !!user &&
     connected &&
     !!toToken &&
     !insufficient &&
@@ -517,10 +527,12 @@ export default function SwapTokens() {
 
           <button
             onClick={handleSwap}
-            disabled={connected && !canSwap}
+            disabled={!!user && connected && !canSwap}
             className="w-full mt-4 flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-neon-purple to-neon-blue text-primary-foreground font-semibold neon-glow disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {!connected
+            {!user
+              ? 'Sign in to Swap'
+              : !connected
               ? 'Connect Wallet to Swap'
               : swapping
               ? (<><Loader2 className="w-4 h-4 animate-spin" /> {isOrcaRoute ? 'Swapping on Orca…' : 'Swapping…'}</>)

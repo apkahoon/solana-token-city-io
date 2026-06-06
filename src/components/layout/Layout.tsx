@@ -29,7 +29,7 @@ export const Layout = ({ children }: { children: ReactNode }) => {
       {isLanding || isAuth ? (
         <>
           <Navbar />
-          <main className="relative pt-22">{children}</main>
+          <main className="relative pt-24">{children}</main>
         </>
       ) : (
         <div className="flex pt-6">
