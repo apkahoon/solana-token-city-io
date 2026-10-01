@@ -12,7 +12,7 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const RPC_URL = Deno.env.get("SOLANA_RPC_URL") || "https://api.devnet.solana.com";
+    const RPC_URL = Deno.env.get("SOLANA_RPC_URL") || "https://solana-rpc.publicnode.com";
 
     const rpcResponse = await fetch(RPC_URL, {
       method: "POST",

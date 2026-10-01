@@ -34,7 +34,7 @@ serve(async (req) => {
     }
 
     // Use server-side RPC (never exposed to client)
-    const RPC_URL = Deno.env.get("SOLANA_RPC_URL") || "https://api.devnet.solana.com";
+    const RPC_URL = Deno.env.get("SOLANA_RPC_URL") || "https://solana-rpc.publicnode.com";
     console.log(`[verify-payment] Verifying tx=${tx_hash} via RPC=${RPC_URL}`);
 
     // Check signature status first for richer logs

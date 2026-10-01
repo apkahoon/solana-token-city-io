@@ -230,7 +230,7 @@ export default function CreateToken() {
       <div className="max-w-5xl mx-auto">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <h1 className="font-display text-2xl sm:text-3xl font-bold mb-2">SolForge Token Creator</h1>
-          <p className="text-muted-foreground text-sm">Mint fully compliant SPL tokens on Solana Devnet with zero coding.</p>
+          <p className="text-muted-foreground text-sm">Mint fully compliant SPL tokens on Solana Mainnet with zero coding.</p>
         </motion.div>
 
         {/* Progress steps */}
@@ -389,7 +389,7 @@ export default function CreateToken() {
                 <p className="text-muted-foreground text-sm mb-4">{errorMessage}</p>
                 {txSignature && (
                   <p className="text-xs text-muted-foreground mb-4">
-                    TX: <a href={`https://explorer.solana.com/tx/${txSignature}?cluster=devnet`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-mono">{txSignature.slice(0, 16)}...</a>
+                    TX: <a href={`https://explorer.solana.com/tx/${txSignature}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-mono">{txSignature.slice(0, 16)}...</a>
                   </p>
                 )}
                 <div className="flex gap-3">
@@ -419,7 +419,7 @@ export default function CreateToken() {
                   {txSignature && (
                     <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">TX:</span>
-                      <a href={`https://explorer.solana.com/tx/${txSignature}?cluster=devnet`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-mono text-xs">{txSignature.slice(0, 20)}...</a>
+                      <a href={`https://explorer.solana.com/tx/${txSignature}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-mono text-xs">{txSignature.slice(0, 20)}...</a>
                     </div>
                   )}
                   {createdToken.mint_address && (

@@ -50,7 +50,7 @@ function SidebarContent({ collapsed, onNavigate }: { collapsed: boolean; onNavig
         <div className="px-4 mb-4">
           <div className="flex items-center gap-1.5 px-2.5 py-1 glass rounded-lg text-xs w-fit">
             <div className="w-2 h-2 rounded-full bg-neon-green animate-pulse" />
-            <span className="text-muted-foreground">DEVNET</span>
+            <span className="text-muted-foreground">MAINNET</span>
           </div>
         </div>
       )}

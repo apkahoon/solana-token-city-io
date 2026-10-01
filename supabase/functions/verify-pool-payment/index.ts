@@ -29,7 +29,7 @@ serve(async (req) => {
       });
     }
 
-    const RPC_URL = Deno.env.get("SOLANA_RPC_URL") || "https://api.devnet.solana.com";
+    const RPC_URL = Deno.env.get("SOLANA_RPC_URL") || "https://solana-rpc.publicnode.com";
     console.log(`[verify-pool] verifying tx=${tx_hash}`);
 
     let tx: any = null;

@@ -31,7 +31,7 @@ export default function Landing() {
             <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
               <div className="inline-flex items-center gap-2 px-4 py-1.5 glass rounded-full text-xs font-medium text-muted-foreground mb-8">
                 <div className="w-2 h-2 rounded-full bg-neon-green animate-pulse" />
-                Live on Solana Devnet
+                Live on Solana Mainnet
               </div>
             </motion.div>
 
