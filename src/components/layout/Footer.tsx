@@ -11,7 +11,7 @@ export const Footer = () => {
           <span className="text-xs font-display font-bold gradient-text">SolForge</span>
         </div>
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
-          <span>Solana Devnet</span>
+          <span>Solana Mainnet</span>
           <span>© 2026 SolForge</span>
         </div>
       </div>
