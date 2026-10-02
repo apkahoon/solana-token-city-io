@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Rocket, TrendingUp, Plus, ArrowLeftRight,
-  Droplets, Shield, Briefcase, Settings, ChevronLeft, ChevronRight, Flame, LayoutDashboard, Menu, X, Rocket } from 'lucide-react';
+  Droplets, Shield, Briefcase, Settings, ChevronLeft, ChevronRight, Flame, LayoutDashboard, Menu, X } from 'lucide-react';
 import { useState } from 'react';
 import { WalletConnectButton } from '../wallet/WalletConnectButton';
 import { useIsMobile } from '@/hooks/use-mobile';
