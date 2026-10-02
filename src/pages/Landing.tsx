@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { LivePriceStrip } from '@/components/token/LivePriceStrip';
 import { motion } from 'framer-motion';
 import { Rocket, TrendingUp, Zap, Shield, ArrowRight, Coins } from 'lucide-react';
 
@@ -67,6 +68,7 @@ export default function Landing() {
           </div>
         </div>
       </section>
+      <LivePriceStrip />
 
       {/* Trending Preview */}
       <section className="py-20 px-4">

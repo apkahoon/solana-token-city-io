@@ -12,11 +12,12 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
-type Action = 'revoke' | 'burn' | 'freeze';
+type Action = 'revoke' | 'burn' | 'freeze' | 'lock';
 
 const actions: { key: Action; label: string; icon: typeof Shield; description: string; color: string }[] = [
   { key: 'revoke', label: 'Revoke Authority', icon: Shield, description: 'Revoke mint or freeze authority to make your token immutable', color: 'from-neon-blue to-neon-purple' },
   { key: 'burn', label: 'Burn Tokens', icon: Flame, description: 'Permanently destroy tokens to reduce supply', color: 'from-neon-pink to-destructive' },
+  { key: 'lock', label: 'Lock Liquidity', icon: Lock, description: 'Permanently lock a pool by burning all of your LP tokens', color: 'from-neon-green to-neon-blue' },
   { key: 'freeze', label: 'Freeze Account', icon: Lock, description: 'Freeze a token account to prevent transfers', color: 'from-neon-purple to-neon-pink' },
 ];
 
@@ -73,6 +74,12 @@ export default function SecurityBurn() {
           if (!mintInfo.freezeAuthority?.equals(owner)) throw new Error('Your wallet is not the freeze authority (or it is already revoked)');
           tx.add(createSetAuthorityInstruction(mint, owner, AuthorityType.FreezeAccount, null, [], programId));
         }
+      } else if (activeAction === 'lock') {
+        const ata = getAssociatedTokenAddressSync(mint, owner, false, programId);
+        const bal = await connection.getTokenAccountBalance(ata).catch(() => null);
+        if (!bal || bal.value.amount === '0') throw new Error('You hold no LP tokens for this pool');
+        amountUi = Number(bal.value.uiAmount);
+        tx.add(createBurnInstruction(ata, mint, owner, BigInt(bal.value.amount), [], programId));
       } else if (activeAction === 'burn') {
         amountUi = Number(burnAmount);
         if (!(amountUi > 0)) throw new Error('Enter an amount to burn');
@@ -107,11 +114,11 @@ export default function SecurityBurn() {
       if (!ok) throw new Error('Not confirmed yet — check Solscan');
       setSig(s);
       toast.success('Done', { description: 'Confirmed on Solana mainnet' });
-      if (activeAction === 'burn' && user) {
+      if ((activeAction === 'burn' || activeAction === 'lock') && user) {
         const { data: tok } = await supabase.from('tokens').select('id').eq('mint_address', mint.toBase58()).maybeSingle();
         await supabase.from('transactions').insert({
           user_wallet: owner.toBase58(), type: 'BURN', amount: amountUi, tx_hash: s, token_id: tok?.id ?? null,
-          status: 'confirmed', is_simulated: false, metadata: { mint: mint.toBase58() },
+          status: 'confirmed', is_simulated: false, metadata: { mint: mint.toBase58(), kind: activeAction === 'lock' ? 'lp_lock' : 'burn' },
         });
       }
       setBurnAmount('');
@@ -130,7 +137,7 @@ export default function SecurityBurn() {
           <p className="text-muted-foreground text-sm">Manage token authority and supply on Solana mainnet</p>
         </motion.div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
           {actions.map((a) => (
             <button key={a.key} onClick={() => { setActiveAction(a.key); setSig(null); }}
               className={`glass p-4 text-left transition-all ${activeAction === a.key ? 'neon-glow ring-1 ring-neon-purple/50' : 'hover:bg-muted/50'}`}>
@@ -143,7 +150,7 @@ export default function SecurityBurn() {
 
         <motion.div key={activeAction} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass p-6">
           <div className="mb-4">
-            <label className="text-sm text-muted-foreground mb-1.5 block">Token Mint Address</label>
+            <label className="text-sm text-muted-foreground mb-1.5 block">{activeAction === 'lock' ? 'LP Token Mint Address (from your Raydium pool)' : 'Token Mint Address'}</label>
             <input placeholder="Enter token mint address..." value={mintAddress} onChange={(e) => setMintAddress(e.target.value)} className={`${inputCls} font-mono`} />
           </div>
 
@@ -176,6 +183,7 @@ export default function SecurityBurn() {
             <p className="text-xs text-muted-foreground">
               {activeAction === 'revoke' && 'Warning: Revoking authority is irreversible. You will not be able to mint new tokens or freeze accounts.'}
               {activeAction === 'burn' && 'Warning: Burning tokens is permanent. The burned tokens will be removed from circulation forever.'}
+              {activeAction === 'lock' && 'Warning: Burning LP tokens locks the liquidity forever. You will never be able to withdraw it — this is what investors trust.'}
               {activeAction === 'freeze' && 'Warning: Freezing an account will prevent all transfers from that account.'}
             </p>
           </div>
@@ -185,6 +193,7 @@ export default function SecurityBurn() {
             {activeAction === 'revoke' && 'Revoke Authority'}
             {activeAction === 'burn' && 'Burn Tokens'}
             {activeAction === 'freeze' && 'Freeze Account'}
+            {activeAction === 'lock' && 'Lock Liquidity Forever'}
           </button>
           {sig && (
             <a href={`https://solscan.io/tx/${sig}`} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center gap-1 text-xs text-primary hover:underline">

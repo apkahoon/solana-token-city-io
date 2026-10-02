@@ -39,7 +39,7 @@ export default function SwapTokens() {
   const [lastSig, setLastSig] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.from('tokens').select('id,name,symbol,decimals,mint_address').not('mint_address', 'is', null).eq('liquidity_added', true).limit(50)
+    supabase.from('tokens').select('id,name,symbol,decimals,mint_address').not('mint_address', 'is', null).limit(100)
       .then(({ data }) => {
         if (!data) return;
         setList([SOL, USDC, USDT, ...data.map((t) => ({ symbol: t.symbol, name: t.name, mint: t.mint_address!, decimals: t.decimals, tokenId: t.id }))]);

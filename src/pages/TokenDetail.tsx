@@ -1,3 +1,4 @@
+import { useTokenPrices, formatUsd } from '@/hooks/useTokenPrices';
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -28,6 +29,7 @@ export default function TokenDetail() {
   const { id } = useParams();
   const [token, setToken] = useState<TokenData | null>(null);
   const [loading, setLoading] = useState(true);
+  const prices = useTokenPrices([token?.mint_address]);
 
   useEffect(() => {
     if (id) loadToken();
@@ -107,6 +109,19 @@ export default function TokenDetail() {
                 {token.description && (
                   <p className="text-sm text-muted-foreground mb-3">{token.description}</p>
                 )}
+                <div className="mb-3">
+                  {token.mint_address && prices[token.mint_address] ? (
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-2xl font-bold">{formatUsd(prices[token.mint_address].usdPrice)}</span>
+                      {prices[token.mint_address].priceChange24h != null && (
+                        <span className={`text-sm ${prices[token.mint_address].priceChange24h! >= 0 ? 'text-neon-green' : 'text-destructive'}`}>
+                          {prices[token.mint_address].priceChange24h!.toFixed(1)}% 24h
+                        </span>
+                      )}
+                      <span className="text-xs text-muted-foreground">live on-chain</span>
+                    </div>
+                  ) : <span className="text-xs text-muted-foreground">No on-chain market price yet</span>}
+                </div>
                 <div className="flex items-center gap-3">
                   {token.website && (
                     <a href={token.website} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg glass text-muted-foreground hover:text-foreground">
@@ -192,12 +207,15 @@ export default function TokenDetail() {
                 <Droplets className="w-5 h-5" /> Add Liquidity
               </Link>
             )}
+            <Link to={`/boost?token=${token.id}`} className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl glass font-medium hover:bg-muted/80">
+              Boost
+            </Link>
             <Link to="/swap" className="flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-xl glass font-medium hover:bg-muted/80">
               Swap Tokens
             </Link>
             {token.mint_address && (
               <a
-                href={`https://explorer.solana.com/address/${token.mint_address}`}
+                href={`https://solscan.io/token/${token.mint_address}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl glass font-medium hover:bg-muted/80"
