@@ -1,3 +1,4 @@
+import { useTokenPrices, formatUsd } from '@/hooks/useTokenPrices';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -38,6 +39,7 @@ export default function Trending() {
   const [activeTab, setActiveTab] = useState<Tab>('trending');
   const [tokens, setTokens] = useState<TokenWithStats[]>([]);
   const [loading, setLoading] = useState(true);
+  const prices = useTokenPrices(tokens.map((t: any) => t.mint_address));
 
   useEffect(() => {
     loadTokens();
@@ -47,7 +49,7 @@ export default function Trending() {
     setLoading(true);
     const { data } = await supabase
       .from('tokens')
-      .select('id, name, symbol, logo_url, created_at, trending_stats(price, price_change_24h, volume_24h, score)')
+      .select('id, name, symbol, logo_url, created_at, mint_address, is_featured, trending_stats(price, price_change_24h, volume_24h, score)')
       .eq('is_flagged', false)
       .order('created_at', { ascending: false })
       .limit(50);
@@ -125,7 +127,8 @@ export default function Trending() {
 
             {tokens.map((token, i) => {
               const stats = Array.isArray(token.trending_stats) ? token.trending_stats[0] : token.trending_stats;
-              const change = stats?.price_change_24h || 0;
+              const live = (token as any).mint_address ? prices[(token as any).mint_address] : undefined;
+              const change = live?.priceChange24h ?? stats?.price_change_24h ?? 0;
               return (
                 <Link
                   key={token.id}
@@ -138,12 +141,12 @@ export default function Trending() {
                       {token.logo_url ? <img src={token.logo_url} alt="" className="w-full h-full object-cover" /> : token.symbol.slice(0, 2)}
                     </div>
                     <div>
-                      <div className="font-semibold text-sm">{token.name}</div>
+                      <div className="font-semibold text-sm">{token.name}{(token as any).is_featured && <span className="ml-2 px-1.5 py-0.5 rounded bg-accent/20 text-accent text-[10px]">Featured</span>}</div>
                       <div className="text-xs text-muted-foreground">${token.symbol}</div>
                     </div>
                   </div>
                   <span className="text-right text-sm font-medium w-20 hidden sm:block">
-                    ${stats?.price?.toFixed(6) || '0.00'}
+                    {live ? formatUsd(live.usdPrice) : '—'}
                   </span>
                   <span className={`text-right text-sm font-semibold w-20 hidden sm:block ${change >= 0 ? 'text-neon-green' : 'text-destructive'}`}>
                     {change >= 0 ? '+' : ''}{change.toFixed(1)}%
