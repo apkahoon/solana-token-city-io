@@ -215,7 +215,7 @@ export default function LiquidityManager() {
                   {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Creating Pool...</> : 'Create Pool & Add Liquidity'}
                 </button>
                 <a href="https://raydium.io/liquidity/create-pool/" target="_blank" rel="noopener noreferrer" className="block text-center text-xs text-primary hover:underline mt-3">
-                  To make your token tradable on-chain, create its real SOL pool on Raydium (opens Raydium) — swaps on SolForge will then route to it automatically.
+                  This creates a real Raydium SOL pool on mainnet. Raydium charges about 0.15 SOL to create a pool, on top of your liquidity.
                 </a>
               </div>
             )}
