@@ -35,6 +35,14 @@ export default function TokenDetail() {
     if (id) loadToken();
   }, [id]);
 
+  const [boostUntil, setBoostUntil] = useState<string | null>(null);
+  useEffect(() => {
+    if (!id) return;
+    supabase.from('boosts').select('expires_at').eq('token_id', id).gt('expires_at', new Date().toISOString())
+      .order('expires_at', { ascending: false }).limit(1).maybeSingle()
+      .then(({ data }) => setBoostUntil(data?.expires_at ?? null));
+  }, [id]);
+
   const loadToken = async () => {
     const { data } = await supabase.from('tokens').select('*').eq('id', id!).single();
     setToken(data as TokenData | null);
@@ -96,7 +104,12 @@ export default function TokenDetail() {
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-1">
                   <h1 className="font-display text-2xl font-bold">{token.name}</h1>
-                  {token.is_featured && (
+                  {boostUntil && (
+                    <span className="px-2 py-0.5 rounded-full bg-accent/20 text-accent text-xs font-medium">
+                      🚀 Boosted until {new Date(boostUntil).toLocaleString()}
+                    </span>
+                  )}
+                  {token.is_featured && !boostUntil && (
                     <span className="px-2 py-0.5 rounded-full bg-neon-green/20 text-neon-green text-xs font-medium">Featured</span>
                   )}
                 </div>
