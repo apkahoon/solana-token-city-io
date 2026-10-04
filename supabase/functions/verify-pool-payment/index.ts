@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.103.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, solana-client",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -85,8 +85,22 @@ serve(async (req) => {
       });
     }
 
-    // Generate a placeholder pool address (real Raydium pool would be created on-chain)
-    const poolAddress = `pool_${tx_hash.slice(0, 16)}`;
+    // Verify the real Raydium CPMM pool exists on-chain
+    const poolAddress = String(pool_data.pool_address || "");
+    if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(poolAddress)) {
+      return new Response(JSON.stringify({ error: "Missing real pool address" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    let poolOk = false;
+    for (let i = 0; i < 5 && !poolOk; i++) {
+      const pr = await fetch(RPC_URL, { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getAccountInfo", params: [poolAddress, { encoding: "base64", commitment: "confirmed" }] }) });
+      const pj = await pr.json();
+      poolOk = pj.result?.value?.owner === "CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C";
+      if (!poolOk) await new Promise((r) => setTimeout(r, 2500));
+    }
+    if (!poolOk) {
+      return new Response(JSON.stringify({ error: "Raydium pool not found on-chain" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     const { data: pool, error: poolErr } = await supabase.from("liquidity_pools").insert({
       token_id: pool_data.token_id,
@@ -113,6 +127,8 @@ serve(async (req) => {
       status: "confirmed",
       tx_hash,
       token_id: pool_data.token_id,
+      is_simulated: false,
+      metadata: { dex: "raydium-cpmm", pool_address: poolAddress, pool_tx: pool_data.pool_tx ?? null, lp_mint: pool_data.lp_mint ?? null },
     });
 
     console.log(`✅ Pool created: ${poolAddress} for token ${pool_data.token_id}`);

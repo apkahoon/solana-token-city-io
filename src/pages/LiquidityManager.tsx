@@ -8,12 +8,14 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { createRaydiumSolPool } from '@/lib/raydiumPool';
 
 const PLATFORM_WALLET = 'AUudUn5v4HM2EtkfM9GXSqLBAGUV5CoMgbKPWFPVV2fS';
 const POOL_FEE_SOL = 0.2;
 
 export default function LiquidityManager() {
-  const { connected, publicKey, sendTransaction } = useWallet();
+  const walletCtx = useWallet();
+  const { connected, publicKey, sendTransaction } = walletCtx;
   const { connection } = useConnection();
   const { setVisible } = useWalletModal();
   const { user } = useAuth();
@@ -35,7 +37,7 @@ export default function LiquidityManager() {
     const wallet = publicKey.toBase58();
     const [poolsRes, tokensRes] = await Promise.all([
       supabase.from('liquidity_pools').select('*, tokens(name, symbol)').eq('creator_wallet', wallet),
-      supabase.from('tokens').select('id, name, symbol').eq('creator_wallet', wallet).eq('liquidity_added', false),
+      supabase.from('tokens').select('id, name, symbol, mint_address').eq('creator_wallet', wallet).eq('liquidity_added', false).not('mint_address', 'is', null),
     ]);
     setPools(poolsRes.data || []);
     setTokens(tokensRes.data || []);
@@ -82,6 +84,15 @@ export default function LiquidityManager() {
       })();
       if (!confirmed) throw new Error('Confirmation timed out. SOL was sent — contact support with TX hash.');
 
+      // Create the REAL Raydium SOL pool with the creator's liquidity
+      const tok = tokens.find((t) => t.id === form.tokenId);
+      if (!tok?.mint_address) throw new Error('This token has no mint address');
+      toast.info('Fee paid. Now approve the Raydium pool creation in Phantom…');
+      const ray = await createRaydiumSolPool({
+        connection, wallet: walletCtx, tokenMint: tok.mint_address, tokenAmountUi: tokAmt, solAmountUi: solAmt,
+      });
+      console.log('[raydium] pool created', ray);
+
       // Verify on backend and insert pool
       const verifyUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/verify-pool-payment`;
       const body = {
@@ -91,6 +102,9 @@ export default function LiquidityManager() {
           creator_wallet: publicKey.toBase58(),
           sol_amount: solAmt,
           token_amount: tokAmt,
+          pool_address: ray.poolId,
+          pool_tx: ray.signature,
+          lp_mint: ray.lpMint,
         },
       };
       let result: any = null;
@@ -113,7 +127,7 @@ export default function LiquidityManager() {
       }
       if (!result?.success) throw new Error(lastErr || 'Verification failed');
 
-      toast.success('Liquidity pool created! 💧');
+      toast.success('Real Raydium pool created! 💧', { description: `Pool ${ray.poolId.slice(0, 8)}… — your token is now tradable in Swap. LP mint: ${ray.lpMint}`, duration: 15000 });
       setForm({ tokenId: '', solAmount: '', tokenAmount: '' });
       setShowAdd(false);
       await loadData();
@@ -121,7 +135,7 @@ export default function LiquidityManager() {
       console.error('Pool creation error:', err);
       let msg = 'Failed to create pool.';
       if (err.message?.includes('User rejected')) msg = 'Transaction cancelled.';
-      else if (err.message?.includes('insufficient')) msg = `Insufficient SOL. Need at least ${POOL_FEE_SOL} SOL + your liquidity.`;
+      else if (err.message?.includes('insufficient')) msg = `Insufficient SOL. Need ${POOL_FEE_SOL} SOL fee + ~0.16 SOL Raydium pool cost + your liquidity.`;
       else if (err.message) msg = err.message;
       toast.error(msg);
     } finally {
@@ -201,7 +215,7 @@ export default function LiquidityManager() {
                   {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Creating Pool...</> : 'Create Pool & Add Liquidity'}
                 </button>
                 <a href="https://raydium.io/liquidity/create-pool/" target="_blank" rel="noopener noreferrer" className="block text-center text-xs text-primary hover:underline mt-3">
-                  To make your token tradable on-chain, create its real SOL pool on Raydium (opens Raydium) — swaps on SolForge will then route to it automatically.
+                  This creates a real Raydium SOL pool on mainnet. Raydium charges about 0.15 SOL to create a pool, on top of your liquidity.
                 </a>
               </div>
             )}
