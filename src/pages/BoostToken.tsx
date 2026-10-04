@@ -59,6 +59,7 @@ export default function BoostToken() {
       const { data, error } = await supabase.functions.invoke('verify-boost', { body: { tx_hash: s, token_id: tokenId, tier } });
       if (error || data?.error) throw new Error(data?.error || error?.message);
       setSig(s);
+      setTokens((ts) => ts.map((x) => (x.id === tokenId ? { ...x, is_featured: true } : x)));
       toast.success('Token boosted!', { description: `Featured until ${new Date(data.expires_at).toLocaleString()}` });
     } catch (e: any) {
       toast.error('Boost failed', { description: e.message });
@@ -102,6 +103,9 @@ export default function BoostToken() {
             <a href={`https://solscan.io/tx/${sig}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-primary hover:underline">
               View payment on Solscan <ExternalLink className="w-3 h-3" />
             </a>
+          )}
+          {sig && (
+            <a href={`/token/${tokenId}`} className="block text-sm text-primary hover:underline">See your boosted token page →</a>
           )}
         </div>
       </div>
