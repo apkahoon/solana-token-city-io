@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, Copy, ExternalLink, Globe, Twitter, Send, Droplets, CheckCircle2, Loader2, Share2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { PoolStatusCard } from '@/components/token/PoolStatusCard';
 
 interface TokenData {
   id: string;
@@ -158,6 +159,8 @@ export default function TokenDetail() {
               </div>
             </div>
           </div>
+
+          <PoolStatusCard tokenId={token.id} mint={token.mint_address} pool={token.pool_address} />
 
           {/* Token Details Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">

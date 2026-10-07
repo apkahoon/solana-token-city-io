@@ -126,3 +126,21 @@ export async function swapRaydiumCpmm(connection: Connection, wallet: WalletCont
   const { txId } = await execute({ sendAndConfirm: false });
   return txId;
 }
+
+export type PoolStats = { solReserve: number; tokenReserve: number; priceSol: number; tradeFeePct: number };
+
+/** Read live reserves and price for a Raydium CPMM SOL pool from the chain. */
+export async function getRaydiumPoolStats(connection: Connection, poolId: string, tokenMint: string): Promise<PoolStats> {
+  const raydium = await loadRaydium(connection);
+  const { poolInfo, rpcData } = await raydium.cpmm.getPoolInfoFromRpc(poolId);
+  const tokenIsA = poolInfo.mintA.address === tokenMint;
+  const tokDec = tokenIsA ? poolInfo.mintA.decimals : poolInfo.mintB.decimals;
+  const tok = new Decimal((tokenIsA ? rpcData.baseReserve : rpcData.quoteReserve).toString()).div(new Decimal(10).pow(tokDec));
+  const sol = new Decimal((tokenIsA ? rpcData.quoteReserve : rpcData.baseReserve).toString()).div(1e9);
+  return {
+    solReserve: sol.toNumber(),
+    tokenReserve: tok.toNumber(),
+    priceSol: tok.gt(0) ? sol.div(tok).toNumber() : 0,
+    tradeFeePct: Number(rpcData.configInfo?.tradeFeeRate?.toString() ?? '2500') / 10_000,
+  };
+}

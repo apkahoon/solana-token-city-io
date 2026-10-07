@@ -12,6 +12,7 @@ import { createRaydiumSolPool } from '@/lib/raydiumPool';
 
 const PLATFORM_WALLET = 'AUudUn5v4HM2EtkfM9GXSqLBAGUV5CoMgbKPWFPVV2fS';
 const POOL_FEE_SOL = 0.2;
+const RAYDIUM_COST_SOL = 0.16;
 
 export default function LiquidityManager() {
   const walletCtx = useWallet();
@@ -28,6 +29,11 @@ export default function LiquidityManager() {
   const [submitting, setSubmitting] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ tokenId: '', solAmount: '', tokenAmount: '' });
+  const [solBalance, setSolBalance] = useState<number | null>(null);
+  useEffect(() => {
+    if (!publicKey) return;
+    connection.getBalance(publicKey).then((l) => setSolBalance(l / LAMPORTS_PER_SOL)).catch(() => setSolBalance(null));
+  }, [publicKey, connection, submitting]);
 
   useEffect(() => {
     if (connected && publicKey) loadData();
@@ -61,6 +67,9 @@ export default function LiquidityManager() {
     const tokAmt = Number(form.tokenAmount);
     if (!solAmt || solAmt <= 0) { toast.error('Enter a valid SOL amount'); return; }
     if (!tokAmt || tokAmt <= 0) { toast.error('Enter a valid token amount'); return; }
+    if (solBalance !== null && solBalance < POOL_FEE_SOL + RAYDIUM_COST_SOL + solAmt) {
+      toast.error(`Not enough SOL. You need about ${(POOL_FEE_SOL + RAYDIUM_COST_SOL + solAmt).toFixed(3)} SOL.`); return;
+    }
 
     try {
       setSubmitting(true);
@@ -213,8 +222,19 @@ export default function LiquidityManager() {
                     <input type="number" min="0" placeholder="0" value={form.tokenAmount} onChange={(e) => setForm({ ...form, tokenAmount: e.target.value })} disabled={submitting} className="w-full px-4 py-2.5 rounded-lg bg-muted border border-border text-foreground text-sm" />
                   </div>
                 </div>
-                <div className="glass p-3 text-xs text-muted-foreground">
-                  <span className="text-foreground font-medium">Fee:</span> {POOL_FEE_SOL} SOL for pool creation (paid to platform wallet)
+                <div className="glass p-3 text-xs space-y-1">
+                  <div className="flex justify-between"><span className="text-muted-foreground">SolForge pool fee</span><span>{POOL_FEE_SOL} SOL</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Raydium pool creation (approx.)</span><span>~{RAYDIUM_COST_SOL} SOL</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Your SOL liquidity</span><span>{Number(form.solAmount) || 0} SOL</span></div>
+                  <div className="flex justify-between font-semibold border-t border-border pt-1"><span>Total needed</span><span>~{(POOL_FEE_SOL + RAYDIUM_COST_SOL + (Number(form.solAmount) || 0)).toFixed(3)} SOL</span></div>
+                  {solBalance !== null && (
+                    <div className={`flex justify-between ${solBalance < POOL_FEE_SOL + RAYDIUM_COST_SOL + (Number(form.solAmount) || 0) ? 'text-destructive' : 'text-muted-foreground'}`}>
+                      <span>Your wallet balance</span><span>{solBalance.toFixed(4)} SOL</span>
+                    </div>
+                  )}
+                  {Number(form.solAmount) > 0 && Number(form.tokenAmount) > 0 && (
+                    <div className="flex justify-between text-muted-foreground"><span>Starting price</span><span>{(Number(form.solAmount) / Number(form.tokenAmount)).toPrecision(4)} SOL per token</span></div>
+                  )}
                 </div>
                 <button
                   onClick={handleCreatePool}
@@ -223,9 +243,9 @@ export default function LiquidityManager() {
                 >
                   {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Creating Pool...</> : 'Create Pool & Add Liquidity'}
                 </button>
-                <a href="https://raydium.io/liquidity/create-pool/" target="_blank" rel="noopener noreferrer" className="block text-center text-xs text-primary hover:underline mt-3">
-                  This creates a real Raydium SOL pool on mainnet. Raydium charges about 0.15 SOL to create a pool, on top of your liquidity.
-                </a>
+                <p className="text-center text-xs text-muted-foreground mt-3">
+                  Creates a real Raydium SOL pool on mainnet right here — no need to open Raydium. You'll approve two transactions in Phantom.
+                </p>
               </div>
             )}
           </motion.div>
