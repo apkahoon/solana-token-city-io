@@ -4,7 +4,7 @@ import { Droplets, Plus, Lock, Unlock, ExternalLink, Loader2 } from 'lucide-reac
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { SystemProgram, Transaction, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,6 +20,8 @@ export default function LiquidityManager() {
   const { setVisible } = useWalletModal();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const preselect = params.get('token');
   const [pools, setPools] = useState<any[]>([]);
   const [tokens, setTokens] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,7 +42,14 @@ export default function LiquidityManager() {
       supabase.from('tokens').select('id, name, symbol, mint_address').eq('creator_wallet', wallet).eq('liquidity_added', false).not('mint_address', 'is', null),
     ]);
     setPools(poolsRes.data || []);
-    setTokens(tokensRes.data || []);
+    let list = tokensRes.data || [];
+    // Allow anyone to create the first pool for a token linked from Swap
+    if (preselect && !list.find((t: any) => t.id === preselect)) {
+      const { data: extra } = await supabase.from('tokens').select('id, name, symbol, mint_address').eq('id', preselect).eq('liquidity_added', false).not('mint_address', 'is', null).maybeSingle();
+      if (extra) list = [extra, ...list];
+    }
+    setTokens(list);
+    if (preselect && list.find((t: any) => t.id === preselect)) { setForm((f) => ({ ...f, tokenId: preselect })); setShowAdd(true); }
     setLoading(false);
   };
 
