@@ -81,3 +81,48 @@ export async function createRaydiumSolPool(opts: {
 }
 
 export const RAYDIUM_CPMM_PROGRAM = CREATE_CPMM_POOL_PROGRAM.toBase58();
+
+async function loadRaydium(connection: Connection, wallet?: WalletContextState) {
+  return Raydium.load({
+    connection,
+    owner: wallet?.publicKey ?? undefined,
+    cluster: 'mainnet',
+    signAllTransactions: wallet?.signAllTransactions?.bind(wallet) as any,
+    disableFeatureCheck: true,
+    disableLoadToken: true,
+    blockhashCommitment: 'confirmed',
+  });
+}
+
+export type RaydiumQuote = { poolId: string; inBase: BN; outBase: BN; minOutBase: BN; priceImpactPct: number; baseIn: boolean };
+
+/** Quote directly against a Raydium CPMM pool's on-chain reserves (used when Jupiter hasn't indexed it yet). */
+export async function quoteRaydiumCpmm(connection: Connection, poolId: string, inputMint: string, amountInBase: number, slippageBps: number): Promise<RaydiumQuote> {
+  const raydium = await loadRaydium(connection);
+  const { poolInfo, rpcData } = await raydium.cpmm.getPoolInfoFromRpc(poolId);
+  const baseIn = poolInfo.mintA.address === inputMint;
+  if (!baseIn && poolInfo.mintB.address !== inputMint) throw new Error('Token not in this pool');
+  const rIn = new Decimal((baseIn ? rpcData.baseReserve : rpcData.quoteReserve).toString());
+  const rOut = new Decimal((baseIn ? rpcData.quoteReserve : rpcData.baseReserve).toString());
+  const feeRate = new Decimal(rpcData.configInfo?.tradeFeeRate?.toString() ?? '2500').div(1_000_000);
+  const inD = new Decimal(amountInBase).mul(new Decimal(1).minus(feeRate));
+  const out = inD.mul(rOut).div(rIn.plus(inD)).floor();
+  const spotOut = new Decimal(amountInBase).mul(rOut).div(rIn);
+  const impact = spotOut.gt(0) ? spotOut.minus(out).div(spotOut).mul(100).toNumber() : 0;
+  const minOut = out.mul(1 - slippageBps / 10_000).floor();
+  return { poolId, inBase: new BN(amountInBase.toString()), outBase: new BN(out.toFixed(0)), minOutBase: new BN(minOut.toFixed(0)), priceImpactPct: impact, baseIn };
+}
+
+/** Execute a real swap through a Raydium CPMM pool. Returns the signature. */
+export async function swapRaydiumCpmm(connection: Connection, wallet: WalletContextState, q: RaydiumQuote, slippageBps: number): Promise<string> {
+  if (!wallet.publicKey || !wallet.signAllTransactions) throw new Error('Wallet does not support signing');
+  const raydium = await loadRaydium(connection, wallet);
+  const { poolInfo, poolKeys } = await raydium.cpmm.getPoolInfoFromRpc(q.poolId);
+  const { execute } = await raydium.cpmm.swap({
+    poolInfo, poolKeys, baseIn: q.baseIn, inputAmount: q.inBase,
+    swapResult: { inputAmount: q.inBase, outputAmount: q.outBase } as any,
+    slippage: slippageBps / 10_000, txVersion: TxVersion.V0,
+  });
+  const { txId } = await execute({ sendAndConfirm: false });
+  return txId;
+}

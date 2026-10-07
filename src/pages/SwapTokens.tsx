@@ -7,10 +7,12 @@ import { LAMPORTS_PER_SOL, VersionedTransaction } from '@solana/web3.js';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { Link } from 'react-router-dom';
+import { quoteRaydiumCpmm, swapRaydiumCpmm, type RaydiumQuote } from '@/lib/raydiumPool';
 
 /** Mainnet swap via Jupiter aggregator (real on-chain trades). */
 
-type TokenOpt = { symbol: string; name: string; mint: string; decimals: number; tokenId?: string };
+type TokenOpt = { symbol: string; name: string; mint: string; decimals: number; tokenId?: string; pool?: string | null };
 
 const SOL: TokenOpt = { symbol: 'SOL', name: 'Solana', mint: 'So11111111111111111111111111111111111111112', decimals: 9 };
 const USDC: TokenOpt = { symbol: 'USDC', name: 'USD Coin', mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', decimals: 6 };
@@ -32,6 +34,7 @@ export default function SwapTokens() {
   const [slippage, setSlippage] = useState('0.5');
   const [picker, setPicker] = useState<'from' | 'to' | null>(null);
   const [quote, setQuote] = useState<Quote | null>(null);
+  const [rayQuote, setRayQuote] = useState<RaydiumQuote | null>(null);
   const [quoting, setQuoting] = useState(false);
   const [quoteErr, setQuoteErr] = useState<string | null>(null);
   const [swapping, setSwapping] = useState(false);
@@ -39,10 +42,10 @@ export default function SwapTokens() {
   const [lastSig, setLastSig] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.from('tokens').select('id,name,symbol,decimals,mint_address').not('mint_address', 'is', null).limit(100)
+    supabase.from('tokens').select('id,name,symbol,decimals,mint_address,pool_address,liquidity_added').not('mint_address', 'is', null).limit(100)
       .then(({ data }) => {
         if (!data) return;
-        setList([SOL, USDC, USDT, ...data.map((t) => ({ symbol: t.symbol, name: t.name, mint: t.mint_address!, decimals: t.decimals, tokenId: t.id }))]);
+        setList([SOL, USDC, USDT, ...data.map((t) => ({ symbol: t.symbol, name: t.name, mint: t.mint_address!, decimals: t.decimals, tokenId: t.id, pool: t.liquidity_added && t.pool_address && !t.pool_address.startsWith('pool_') ? t.pool_address : null }))]);
       });
   }, []);
 
@@ -58,7 +61,7 @@ export default function SwapTokens() {
   }, [amount, from]);
 
   useEffect(() => {
-    setQuote(null); setQuoteErr(null);
+    setQuote(null); setRayQuote(null); setQuoteErr(null);
     if (!amountBase || from.mint === to.mint) return;
     const ctrl = new AbortController();
     const t = setTimeout(async () => {
@@ -69,23 +72,38 @@ export default function SwapTokens() {
         if (!r.ok || j.error) throw new Error(j.error || 'No route found');
         setQuote(j);
       } catch (e: any) {
-        if (e.name !== 'AbortError') setQuoteErr(e.message?.includes('route') ? 'No trading route — this token may have no market yet.' : e.message);
+        if (e.name === 'AbortError') return;
+        // Fallback: quote directly against our own Raydium pool (SOL pair only)
+        const platform = from.pool ? from : to.pool ? to : null;
+        const other = platform === from ? to : from;
+        if (platform?.pool && other.symbol === 'SOL') {
+          try { setRayQuote(await quoteRaydiumCpmm(connection, platform.pool, from.mint, amountBase, slippageBps)); return; }
+          catch (re: any) { console.warn('raydium quote failed', re); }
+        }
+        setQuoteErr(e.message?.includes('route') ? 'No trading route — this token may have no market yet.' : e.message);
       } finally { setQuoting(false); }
     }, 400);
     return () => { clearTimeout(t); ctrl.abort(); };
-  }, [amountBase, from, to, slippageBps]);
+  }, [amountBase, from, to, slippageBps, connection]);
 
-  const outUi = quote ? Number(quote.outAmount) / 10 ** to.decimals : 0;
-  const minUi = quote ? Number(quote.otherAmountThreshold) / 10 ** to.decimals : 0;
+  const outUi = quote ? Number(quote.outAmount) / 10 ** to.decimals : rayQuote ? Number(rayQuote.outBase.toString()) / 10 ** to.decimals : 0;
+  const minUi = quote ? Number(quote.otherAmountThreshold) / 10 ** to.decimals : rayQuote ? Number(rayQuote.minOutBase.toString()) / 10 ** to.decimals : 0;
+  const impactPct = quote ? Number(quote.priceImpactPct) * 100 : rayQuote?.priceImpactPct ?? 0;
+  const hasQuote = !!quote || !!rayQuote;
+  const noPoolToken = [from, to].find((t) => t.tokenId && !t.pool);
 
   const doSwap = async () => {
     if (!wallet.publicKey || !wallet.signTransaction) return setVisible(true);
-    if (!quote) return;
+    if (!quote && !rayQuote) return;
     setSwapping(true);
     try {
+      let sig: string;
+      if (rayQuote) {
+        sig = await swapRaydiumCpmm(connection, wallet, rayQuote, slippageBps);
+      } else {
       const r = await fetch(`${JUP}/swap`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ quoteResponse: quote, userPublicKey: wallet.publicKey.toBase58(), wrapAndUnwrapSol: true, dynamicComputeUnitLimit: true, prioritizationFeeLamports: 'auto' }),
+        body: JSON.stringify({ quoteResponse: quote!, userPublicKey: wallet.publicKey.toBase58(), wrapAndUnwrapSol: true, dynamicComputeUnitLimit: true, prioritizationFeeLamports: 'auto' }),
       });
       const j = await r.json();
       if (!r.ok || !j.swapTransaction) throw new Error(j.error || 'Could not build swap');
@@ -93,7 +111,8 @@ export default function SwapTokens() {
       const sim = await connection.simulateTransaction(tx, { sigVerify: false });
       if (sim.value.err) throw new Error('Simulation failed: ' + JSON.stringify(sim.value.err));
       const signed = await wallet.signTransaction(tx);
-      const sig = await connection.sendRawTransaction(signed.serialize(), { skipPreflight: true, maxRetries: 3 });
+      sig = await connection.sendRawTransaction(signed.serialize(), { skipPreflight: true, maxRetries: 3 });
+      }
       // HTTP polling confirmation (no websockets through proxy)
       let ok = false;
       for (let i = 0; i < 40 && !ok; i++) {
@@ -109,7 +128,7 @@ export default function SwapTokens() {
         await supabase.from('transactions').insert({
           user_wallet: wallet.publicKey.toBase58(), type: 'SWAP', amount: Number(amount), tx_hash: sig,
           token_id: from.tokenId ?? to.tokenId ?? null, status: 'confirmed', is_simulated: false,
-          metadata: { route: 'jupiter-mainnet', in: from.symbol, out: to.symbol, outAmount: outUi, minReceived: minUi, slippageBps, priceImpactPct: Number(quote.priceImpactPct) * 100 },
+          metadata: { route: rayQuote ? 'raydium-cpmm-direct' : 'jupiter-mainnet', pool: rayQuote?.poolId ?? null, in: from.symbol, out: to.symbol, outAmount: outUi, minReceived: minUi, slippageBps, priceImpactPct: impactPct },
         });
       }
       setAmount('');
@@ -164,17 +183,23 @@ export default function SwapTokens() {
             <span>Slippage %</span>
             <input value={slippage} onChange={(e) => setSlippage(e.target.value)} className="w-16 px-2 py-1 rounded bg-muted text-right text-foreground" />
           </div>
-          {quote && (
+          {hasQuote && (
             <div className="text-xs space-y-1 text-muted-foreground">
               <div className="flex justify-between"><span>Minimum received</span><span>{minUi.toFixed(6)} {to.symbol}</span></div>
-              <div className="flex justify-between"><span>Price impact</span><span>{(Number(quote.priceImpactPct) * 100).toFixed(2)}%</span></div>
+              <div className="flex justify-between"><span>Price impact</span><span>{impactPct.toFixed(2)}%</span></div>
+              <div className="flex justify-between"><span>Route</span><span>{rayQuote ? 'Raydium pool (direct)' : 'Jupiter (best price)'}</span></div>
             </div>
           )}
           {quoteErr && <p className="text-xs text-destructive">{quoteErr}</p>}
+          {noPoolToken && (
+            <Link to={`/liquidity?token=${noPoolToken.tokenId}`} className="block text-center text-xs py-2 rounded-lg glass hover:bg-muted/50">
+              ${noPoolToken.symbol} has no Raydium pool yet — <span className="text-primary font-semibold">Create a pool</span>
+            </Link>
+          )}
 
           <button
             onClick={wallet.connected ? doSwap : () => setVisible(true)}
-            disabled={wallet.connected && (!quote || swapping)}
+            disabled={wallet.connected && (!hasQuote || swapping)}
             className="w-full py-3 rounded-xl bg-gradient-to-r from-neon-purple to-neon-blue text-primary-foreground font-semibold neon-glow disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {swapping && <Loader2 className="w-4 h-4 animate-spin" />}
