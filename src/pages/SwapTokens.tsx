@@ -88,8 +88,6 @@ export default function SwapTokens() {
         setQuoteErr(m.includes('route') ? 'No trading route — this token may have no market yet.' : m);
       }
       setQuoting(false);
-      try {
-      } finally { setQuoting(false); }
     }, 400);
     return () => { clearTimeout(t); ctrl.abort(); };
   }, [amountBase, from, to, slippageBps, connection]);
