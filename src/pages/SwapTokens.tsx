@@ -35,6 +35,7 @@ export default function SwapTokens() {
   const [picker, setPicker] = useState<'from' | 'to' | null>(null);
   const [quote, setQuote] = useState<Quote | null>(null);
   const [rayQuote, setRayQuote] = useState<RaydiumQuote | null>(null);
+  const [route, setRoute] = useState<'direct' | 'jupiter'>('direct');
   const [quoting, setQuoting] = useState(false);
   const [quoteErr, setQuoteErr] = useState<string | null>(null);
   const [swapping, setSwapping] = useState(false);
@@ -66,29 +67,40 @@ export default function SwapTokens() {
     const ctrl = new AbortController();
     const t = setTimeout(async () => {
       setQuoting(true);
+      const platform = from.pool ? from : to.pool ? to : null;
+      const other = platform === from ? to : from;
+      const directOk = !!platform?.pool && other.symbol === 'SOL';
+      const [jr, rr] = await Promise.allSettled([
+        (async () => {
+          const r = await fetch(`${JUP}/quote?inputMint=${from.mint}&outputMint=${to.mint}&amount=${amountBase}&slippageBps=${slippageBps}`, { signal: ctrl.signal });
+          const j = await r.json();
+          if (!r.ok || j.error) throw new Error(j.error || 'No route found');
+          return j;
+        })(),
+        directOk ? quoteRaydiumCpmm(connection, platform!.pool!, from.mint, amountBase, slippageBps) : Promise.reject(new Error('no pool')),
+      ]);
+      if (ctrl.signal.aborted) return;
+      if (jr.status === 'fulfilled') setQuote(jr.value);
+      if (rr.status === 'fulfilled') setRayQuote(rr.value);
+      else if (directOk) console.warn('raydium quote failed', rr.reason);
+      if (jr.status === 'rejected' && rr.status === 'rejected') {
+        const m = String((jr.reason as any)?.message || '');
+        setQuoteErr(m.includes('route') ? 'No trading route — this token may have no market yet.' : m);
+      }
+      setQuoting(false);
       try {
-        const r = await fetch(`${JUP}/quote?inputMint=${from.mint}&outputMint=${to.mint}&amount=${amountBase}&slippageBps=${slippageBps}`, { signal: ctrl.signal });
-        const j = await r.json();
-        if (!r.ok || j.error) throw new Error(j.error || 'No route found');
-        setQuote(j);
-      } catch (e: any) {
-        if (e.name === 'AbortError') return;
-        // Fallback: quote directly against our own Raydium pool (SOL pair only)
-        const platform = from.pool ? from : to.pool ? to : null;
-        const other = platform === from ? to : from;
-        if (platform?.pool && other.symbol === 'SOL') {
-          try { setRayQuote(await quoteRaydiumCpmm(connection, platform.pool, from.mint, amountBase, slippageBps)); return; }
-          catch (re: any) { console.warn('raydium quote failed', re); }
-        }
-        setQuoteErr(e.message?.includes('route') ? 'No trading route — this token may have no market yet.' : e.message);
       } finally { setQuoting(false); }
     }, 400);
     return () => { clearTimeout(t); ctrl.abort(); };
   }, [amountBase, from, to, slippageBps, connection]);
 
-  const outUi = quote ? Number(quote.outAmount) / 10 ** to.decimals : rayQuote ? Number(rayQuote.outBase.toString()) / 10 ** to.decimals : 0;
-  const minUi = quote ? Number(quote.otherAmountThreshold) / 10 ** to.decimals : rayQuote ? Number(rayQuote.minOutBase.toString()) / 10 ** to.decimals : 0;
-  const impactPct = quote ? Number(quote.priceImpactPct) * 100 : rayQuote?.priceImpactPct ?? 0;
+  const useDirect = !!rayQuote && (route === 'direct' || !quote);
+  const outUi = useDirect ? Number(rayQuote!.outBase.toString()) / 10 ** to.decimals : quote ? Number(quote.outAmount) / 10 ** to.decimals : 0;
+  const minUi = useDirect ? Number(rayQuote!.minOutBase.toString()) / 10 ** to.decimals : quote ? Number(quote.otherAmountThreshold) / 10 ** to.decimals : 0;
+  const impactPct = useDirect ? rayQuote!.priceImpactPct : quote ? Number(quote.priceImpactPct) * 100 : 0;
+  const poolPriceSol = rayQuote ? (from.symbol === 'SOL'
+    ? (Number(rayQuote.inBase.toString()) / 1e9) / (Number(rayQuote.outBase.toString()) / 10 ** to.decimals)
+    : (Number(rayQuote.outBase.toString()) / 1e9) / (Number(rayQuote.inBase.toString()) / 10 ** from.decimals)) : 0;
   const hasQuote = !!quote || !!rayQuote;
   const noPoolToken = [from, to].find((t) => t.tokenId && !t.pool);
 
@@ -98,8 +110,8 @@ export default function SwapTokens() {
     setSwapping(true);
     try {
       let sig: string;
-      if (rayQuote) {
-        sig = await swapRaydiumCpmm(connection, wallet, rayQuote, slippageBps);
+      if (useDirect) {
+        sig = await swapRaydiumCpmm(connection, wallet, rayQuote!, slippageBps);
       } else {
       const r = await fetch(`${JUP}/swap`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -128,7 +140,7 @@ export default function SwapTokens() {
         await supabase.from('transactions').insert({
           user_wallet: wallet.publicKey.toBase58(), type: 'SWAP', amount: Number(amount), tx_hash: sig,
           token_id: from.tokenId ?? to.tokenId ?? null, status: 'confirmed', is_simulated: false,
-          metadata: { route: rayQuote ? 'raydium-cpmm-direct' : 'jupiter-mainnet', pool: rayQuote?.poolId ?? null, in: from.symbol, out: to.symbol, outAmount: outUi, minReceived: minUi, slippageBps, priceImpactPct: impactPct },
+          metadata: { route: useDirect ? 'raydium-cpmm-direct' : 'jupiter-mainnet', pool: useDirect ? rayQuote!.poolId : null, in: from.symbol, out: to.symbol, outAmount: outUi, minReceived: minUi, slippageBps, priceImpactPct: impactPct },
         });
       }
       setAmount('');
@@ -187,7 +199,24 @@ export default function SwapTokens() {
             <div className="text-xs space-y-1 text-muted-foreground">
               <div className="flex justify-between"><span>Minimum received</span><span>{minUi.toFixed(6)} {to.symbol}</span></div>
               <div className="flex justify-between"><span>Price impact</span><span>{impactPct.toFixed(2)}%</span></div>
-              <div className="flex justify-between"><span>Route</span><span>{rayQuote ? 'Raydium pool (direct)' : 'Jupiter (best price)'}</span></div>
+              {rayQuote && (
+                <div className="flex justify-between"><span>Pool price</span><span>{poolPriceSol.toPrecision(4)} SOL per token</span></div>
+              )}
+              {rayQuote && quote ? (
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  {(['direct', 'jupiter'] as const).map((r) => {
+                    const out = r === 'direct' ? Number(rayQuote.outBase.toString()) : Number(quote.outAmount);
+                    return (
+                      <button key={r} onClick={() => setRoute(r)} className={`p-2 rounded-lg text-left ${(r === 'direct') === useDirect ? 'ring-1 ring-primary bg-muted' : 'bg-muted/50'}`}>
+                        <div className="font-semibold text-foreground">{r === 'direct' ? 'Raydium pool (direct)' : 'Jupiter (best price)'}</div>
+                        <div>{(out / 10 ** to.decimals).toFixed(6)} {to.symbol}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex justify-between"><span>Route</span><span>{useDirect ? 'Raydium pool (direct)' : 'Jupiter (best price)'}</span></div>
+              )}
             </div>
           )}
           {quoteErr && <p className="text-xs text-destructive">{quoteErr}</p>}
