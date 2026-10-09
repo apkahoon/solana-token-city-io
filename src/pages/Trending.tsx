@@ -1,3 +1,4 @@
+import { useMarketStats, marketScore } from '@/hooks/useMarketStats';
 import { useTokenPrices, formatUsd } from '@/hooks/useTokenPrices';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
@@ -40,6 +41,16 @@ export default function Trending() {
   const [tokens, setTokens] = useState<TokenWithStats[]>([]);
   const [loading, setLoading] = useState(true);
   const prices = useTokenPrices(tokens.map((t: any) => t.mint_address));
+  const market = useMarketStats(tokens.map((t: any) => t.mint_address));
+  const mk = (t: any) => (t.mint_address ? market[t.mint_address] : undefined);
+  const rankScore = (t: any) => {
+    const st = Array.isArray(t.trending_stats) ? t.trending_stats[0] : t.trending_stats;
+    const m = mk(t);
+    return (m ? marketScore(m) : 0) + Number(st?.score || 0); // includes paid boost bonus
+  };
+  const shown = activeTab === 'trending' ? [...tokens].sort((a, b) => rankScore(b) - rankScore(a))
+    : activeTab === 'gainers' ? [...tokens].sort((a, b) => (mk(b)?.change24h ?? -1e9) - (mk(a)?.change24h ?? -1e9))
+    : tokens;
 
   useEffect(() => {
     loadTokens();
@@ -125,10 +136,12 @@ export default function Trending() {
               <span className="w-10" />
             </div>
 
-            {tokens.map((token, i) => {
+            {shown.map((token, i) => {
               const stats = Array.isArray(token.trending_stats) ? token.trending_stats[0] : token.trending_stats;
               const live = (token as any).mint_address ? prices[(token as any).mint_address] : undefined;
-              const change = live?.priceChange24h ?? stats?.price_change_24h ?? 0;
+              const m = mk(token);
+              const hasMarket = !!(m || live);
+              const change = m?.change24h ?? live?.priceChange24h ?? 0;
               return (
                 <Link
                   key={token.id}
@@ -146,21 +159,21 @@ export default function Trending() {
                     </div>
                   </div>
                   <span className="text-right text-sm font-medium w-20 hidden sm:block">
-                    {live ? formatUsd(live.usdPrice) : '—'}
+                    {m ? formatUsd(m.priceUsd) : live ? formatUsd(live.usdPrice) : '—'}
                   </span>
                   <span className={`text-right text-sm font-semibold w-20 hidden sm:block ${change >= 0 ? 'text-neon-green' : 'text-destructive'}`}>
-                    {change >= 0 ? '+' : ''}{change.toFixed(1)}%
+                    {hasMarket ? `${change >= 0 ? '+' : ''}${change.toFixed(1)}%` : '—'}
                   </span>
                   <span className="text-right text-sm text-muted-foreground w-24 hidden sm:block">
-                    ${(stats?.volume_24h || 0).toLocaleString()}
+                    {m ? `$${Math.round(m.volume24h).toLocaleString()}` : '—'}
                   </span>
                   <div className="text-right w-20 hidden sm:flex items-center justify-end gap-1">
                     <Zap className="w-3 h-3 text-primary" />
-                    <span className="text-sm font-medium">{stats?.score || 0}</span>
+                    <span className="text-sm font-medium">{Math.round(rankScore(token)).toLocaleString()}</span>
                   </div>
                   <div className="flex items-center gap-2 sm:w-10">
                     <span className={`text-sm font-semibold sm:hidden ${change >= 0 ? 'text-neon-green' : 'text-destructive'}`}>
-                      {change >= 0 ? '+' : ''}{change.toFixed(0)}%
+                      {hasMarket ? `${change >= 0 ? '+' : ''}${change.toFixed(0)}%` : '—'}
                     </span>
                     <ExternalLink className="w-4 h-4 text-muted-foreground hover:text-foreground shrink-0" />
                   </div>
