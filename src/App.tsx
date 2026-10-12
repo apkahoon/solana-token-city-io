@@ -19,6 +19,7 @@ import Auth from "./pages/Auth";
 import UserDashboard from "./pages/UserDashboard";
 import TokenDetail from "./pages/TokenDetail";
 import BoostToken from "./pages/BoostToken";
+import Market from "./pages/Market";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import NotFound from "./pages/NotFound";
@@ -46,6 +47,7 @@ const App = () => (
                   <Route path="/swap" element={<SwapTokens />} />
                   <Route path="/liquidity" element={<LiquidityManager />} />
                   <Route path="/security" element={<SecurityBurn />} />
+                  <Route path="/market" element={<Market />} />
                   <Route path="/boost" element={<BoostToken />} />
                   <Route path="/token/:id" element={<TokenDetail />} />
                   <Route path="/terms" element={<Terms />} />
