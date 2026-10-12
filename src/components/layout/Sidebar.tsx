@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Rocket, TrendingUp, Plus, ArrowLeftRight,
-  Droplets, Shield, Briefcase, Settings, ChevronLeft, ChevronRight, Flame, LayoutDashboard, Menu, X } from 'lucide-react';
+  Droplets, Shield, Briefcase, Settings, ChevronLeft, ChevronRight, Flame, LayoutDashboard, Menu, X, Store } from 'lucide-react';
 import { useState } from 'react';
 import { WalletConnectButton } from '../wallet/WalletConnectButton';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -13,6 +13,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/create', label: 'Token Creator', icon: Plus, badge: true },
+  { to: '/market', label: 'Market', icon: Store },
   { to: '/swap', label: 'Swap Tokens', icon: ArrowLeftRight },
   { to: '/liquidity', label: 'Liquidity Manager', icon: Droplets },
   { to: '/security', label: 'Security & Burn', icon: Shield },
