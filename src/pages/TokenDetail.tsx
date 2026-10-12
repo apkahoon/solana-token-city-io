@@ -6,6 +6,7 @@ import { ArrowLeft, Copy, ExternalLink, Globe, Twitter, Send, Droplets, CheckCir
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { PoolStatusCard } from '@/components/token/PoolStatusCard';
+import { RecentTrades } from '@/components/token/RecentTrades';
 
 interface TokenData {
   id: string;
@@ -161,6 +162,7 @@ export default function TokenDetail() {
           </div>
 
           <PoolStatusCard tokenId={token.id} mint={token.mint_address} pool={token.pool_address} />
+          <RecentTrades pool={token.pool_address} mint={token.mint_address} symbol={token.symbol} />
 
           {/* Token Details Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">

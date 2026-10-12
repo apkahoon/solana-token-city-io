@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-export type MarketStats = { priceUsd: number; volume24h: number; change24h: number; liquidityUsd: number; buys24h: number; pairUrl: string };
+export type MarketStats = { priceUsd: number; volume24h: number; change24h: number; liquidityUsd: number; buys24h: number; sells24h: number; pairUrl: string };
 
 /** Real 24h market stats for live pools (DexScreener, Solana mainnet). Highest-liquidity pair wins. */
 export function useMarketStats(mints: (string | null | undefined)[]) {
@@ -25,7 +25,7 @@ export function useMarketStats(mints: (string | null | undefined)[]) {
             out[mint] = {
               priceUsd: Number(p.priceUsd || 0), volume24h: Number(p.volume?.h24 || 0),
               change24h: Number(p.priceChange?.h24 || 0), liquidityUsd: liq,
-              buys24h: Number(p.txns?.h24?.buys || 0), pairUrl: p.url,
+              buys24h: Number(p.txns?.h24?.buys || 0), sells24h: Number(p.txns?.h24?.sells || 0), pairUrl: p.url,
             };
           }
         }
