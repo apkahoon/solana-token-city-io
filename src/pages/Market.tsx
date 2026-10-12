@@ -93,7 +93,8 @@ export default function Market() {
                   </Link>
                   <span className="hidden md:block text-right text-sm font-medium">{p != null ? formatUsd(p) : '—'}</span>
                   <span className={`hidden md:block text-right text-sm font-semibold ${ch == null ? 'text-muted-foreground' : ch >= 0 ? 'text-neon-green' : 'text-destructive'}`}>{ch != null ? `${ch >= 0 ? '+' : ''}${ch.toFixed(1)}%` : '—'}</span>
-                  <span className="hidden md:block text-right text-sm text-muted-foreground">{m ? `$${Math.round(m.volume24h).toLocaleString()}` : '—'}</span>
+                  <span className="hidden md:block text-right text-sm text-muted-foreground">{m ? `$${Math.round(m.volume24h).toLocaleString()}` : '—'}
+                    {m && <span className="block text-[11px]"><span className="text-neon-green">{m.buys24h} buys</span> · <span className="text-destructive">{m.sells24h} sells</span></span>}</span>
                   <span className="hidden md:block text-right text-sm text-muted-foreground">{m ? `$${Math.round(m.liquidityUsd).toLocaleString()}` : '—'}</span>
                   <div className="flex items-center gap-2 justify-end w-24">
                     <Link to={`/token/${t.id}`} className="px-3 py-1.5 rounded-lg glass text-xs hover:bg-muted/60">View</Link>
