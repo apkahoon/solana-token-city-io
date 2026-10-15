@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { PoolStatusCard } from '@/components/token/PoolStatusCard';
 import { RecentTrades } from '@/components/token/RecentTrades';
+import { PriceChart } from '@/components/token/PriceChart';
 
 interface TokenData {
   id: string;
@@ -162,6 +163,7 @@ export default function TokenDetail() {
           </div>
 
           <PoolStatusCard tokenId={token.id} mint={token.mint_address} pool={token.pool_address} />
+          <PriceChart pool={token.pool_address} />
           <RecentTrades pool={token.pool_address} mint={token.mint_address} symbol={token.symbol} />
 
           {/* Token Details Grid */}
