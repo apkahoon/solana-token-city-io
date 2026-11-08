@@ -42,7 +42,7 @@ export function PriceChart({ pool }: { pool: string | null }) {
   const first = data[0]?.p, last = data[data.length - 1]?.p;
   const change = first && last ? ((last - first) / first) * 100 : null;
   const up = (change ?? 0) >= 0;
-  const color = up ? 'hsl(var(--neon-green, 142 76% 45%))' : 'hsl(var(--destructive))';
+  const color = up ? 'hsl(var(--neon-green))' : 'hsl(var(--destructive))';
 
   return (
     <div className="glass p-5 mb-6">
